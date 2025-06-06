@@ -283,9 +283,15 @@ collect_configuration() {
     print_color "$BLUE" "Please provide the following information for your iLO4 setup."
     echo ""
 
+    # Create config directory first if it doesn't exist
+    $SUDO_CMD mkdir -p "$CONFIG_DIR" 2>/dev/null || true
+
     # Load existing configuration if available
     load_existing_config
     set_default_values
+
+    print_color "$GREEN" "✓ Configuration defaults loaded"
+    echo ""
 
     # iLO connection details
     print_color "$CYAN" "=== iLO4 Connection Settings ==="

@@ -34,34 +34,70 @@ print_color() {
 # Function to show usage
 show_usage() {
     cat << EOF
-HP iLO4 Manual Fan Control Script
+HP iLO4 Manual Fan Control Script v1.0.0
+
+DESCRIPTION:
+  Manual control interface for HP iLO4 fan management. This script provides
+  both interactive and command-line access to fan control functions.
 
 USAGE:
   $(basename "$0") [OPTIONS]
 
 OPTIONS:
-  --interactive, -i          Interactive mode with menu
-  --status, -s              Show current fan status
+  --interactive, -i          Interactive mode with menu interface
+  --status, -s              Show current fan status and temperatures
   --set-speed FAN SPEED     Set specific fan speed (0-255)
   --set-all SPEED          Set all fans to the same speed
-  --reset                  Reset fans to safe defaults
-  --test                   Test iLO connection
-  --emergency              Set all fans to maximum speed
+  --reset                  Reset fans to safe defaults (speed 60)
+  --test                   Test iLO connection and basic functionality
+  --emergency              Set all fans to maximum speed (255)
+  --quiet                  Quiet mode - minimal output
   --help, -h               Show this help message
 
 EXAMPLES:
+  # Interactive menu mode
   $(basename "$0") --interactive
+
+  # Check current status
   $(basename "$0") --status
+
+  # Set fan 3 to speed 128 (50% power)
   $(basename "$0") --set-speed 3 128
-  $(basename "$0") --set-all 100
+
+  # Set all fans to quiet operation (speed 80)
+  $(basename "$0") --set-all 80
+
+  # Reset all fans to safe defaults
   $(basename "$0") --reset
 
+  # Emergency cooling mode
+  $(basename "$0") --emergency
+
+  # Test iLO connectivity
+  $(basename "$0") --test
+
 CONFIGURATION:
-  Edit the configuration section at the top of this script:
+  Edit the configuration section at the top of this script to set:
   - ILO_HOST: iLO IP address or hostname
   - ILO_USER: iLO username  
   - ILO_PASS: iLO password
-  - FAN_COUNT: Number of fans in your system
+  - FAN_COUNT: Number of fans in your system (typically 6)
+
+SAFETY NOTES:
+  - Minimum fan speed is automatically enforced (typically 60)
+  - Emergency mode sets all fans to maximum for critical cooling
+  - Always test configuration changes in a safe environment
+  - Monitor system temperatures when making manual adjustments
+
+FAN SPEED REFERENCE:
+  0-50:   Very quiet (may cause overheating)
+  51-100: Quiet operation (suitable for idle/low load)
+  101-150: Moderate cooling (normal operation)
+  151-200: High cooling (heavy workloads)
+  201-255: Maximum cooling (emergency/stress testing)
+
+For automatic temperature-based control, use the main fan control service:
+  sudo systemctl start ilo4-fan-control
 
 EOF
 }

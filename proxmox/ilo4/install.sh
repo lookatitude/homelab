@@ -187,81 +187,173 @@ prompt_yes_no() {
     done
 }
 
+# Function to load existing configuration
+load_existing_config() {
+    local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
+    
+    if [[ -f "$config_file" ]]; then
+        print_color "$GREEN" "Found existing configuration file: $config_file"
+        print_color "$BLUE" "Loading current settings as defaults..."
+        
+        # Source the config file safely to load current values
+        while IFS='=' read -r key value; do
+            # Skip comments and empty lines
+            [[ "$key" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$key" ]] && continue
+            
+            # Clean up the value (remove quotes and whitespace)
+            value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+            
+            case "$key" in
+                ILO_HOST) DEFAULT_ILO_HOST="$value" ;;
+                ILO_USER) DEFAULT_ILO_USER="$value" ;;
+                ILO_PASS) DEFAULT_ILO_PASS="$value" ;;
+                FAN_COUNT) DEFAULT_FAN_COUNT="$value" ;;
+                GLOBAL_MIN_SPEED) DEFAULT_GLOBAL_MIN_SPEED="$value" ;;
+                PID_MIN_LOW) DEFAULT_PID_MIN_LOW="$value" ;;
+                ENABLE_DYNAMIC_CONTROL) DEFAULT_ENABLE_DYNAMIC_CONTROL="$value" ;;
+                MONITORING_INTERVAL) DEFAULT_MONITORING_INTERVAL="$value" ;;
+                MAX_TEMP_CPU) DEFAULT_MAX_TEMP_CPU="$value" ;;
+                LOG_LEVEL) DEFAULT_LOG_LEVEL="$value" ;;
+                CONNECTION_TIMEOUT) DEFAULT_CONNECTION_TIMEOUT="$value" ;;
+                COMMAND_RETRIES) DEFAULT_COMMAND_RETRIES="$value" ;;
+                TEMP_THRESHOLD_90) DEFAULT_TEMP_THRESHOLD_90="$value" ;;
+                TEMP_THRESHOLD_80) DEFAULT_TEMP_THRESHOLD_80="$value" ;;
+                TEMP_THRESHOLD_70) DEFAULT_TEMP_THRESHOLD_70="$value" ;;
+                TEMP_THRESHOLD_60) DEFAULT_TEMP_THRESHOLD_60="$value" ;;
+                TEMP_THRESHOLD_50) DEFAULT_TEMP_THRESHOLD_50="$value" ;;
+                TEMP_THRESHOLD_DEFAULT) DEFAULT_TEMP_THRESHOLD_DEFAULT="$value" ;;
+            esac
+        done < "$config_file"
+        
+        # Load array values
+        if grep -q "DISABLED_SENSORS=" "$config_file"; then
+            local sensors_line=$(grep "DISABLED_SENSORS=" "$config_file" | head -1)
+            DEFAULT_DISABLED_SENSORS_INPUT=$(echo "$sensors_line" | sed 's/DISABLED_SENSORS=(\(.*\))/\1/' | tr ' ' ',')
+        fi
+        
+        if grep -q "CPU1_FANS=" "$config_file"; then
+            local cpu1_line=$(grep "CPU1_FANS=" "$config_file" | head -1)
+            DEFAULT_CPU1_FANS_INPUT=$(echo "$cpu1_line" | sed 's/CPU1_FANS=(\(.*\))/\1/')
+        fi
+        
+        if grep -q "CPU2_FANS=" "$config_file"; then
+            local cpu2_line=$(grep "CPU2_FANS=" "$config_file" | head -1)
+            DEFAULT_CPU2_FANS_INPUT=$(echo "$cpu2_line" | sed 's/CPU2_FANS=(\(.*\))/\1/')
+        fi
+        
+        echo ""
+        return 0
+    else
+        print_color "$YELLOW" "No existing configuration found. Using system defaults."
+        echo ""
+        return 1
+    fi
+}
+
+# Function to set default values
+set_default_values() {
+    # Set defaults (will be overridden by existing config if found)
+    DEFAULT_ILO_HOST="${DEFAULT_ILO_HOST:-192.168.1.100}"
+    DEFAULT_ILO_USER="${DEFAULT_ILO_USER:-Administrator}"
+    DEFAULT_ILO_PASS="${DEFAULT_ILO_PASS:-password}"
+    DEFAULT_FAN_COUNT="${DEFAULT_FAN_COUNT:-6}"
+    DEFAULT_GLOBAL_MIN_SPEED="${DEFAULT_GLOBAL_MIN_SPEED:-60}"
+    DEFAULT_PID_MIN_LOW="${DEFAULT_PID_MIN_LOW:-1600}"
+    DEFAULT_DISABLED_SENSORS_INPUT="${DEFAULT_DISABLED_SENSORS_INPUT:-07FB00,35,38}"
+    DEFAULT_ENABLE_DYNAMIC_CONTROL="${DEFAULT_ENABLE_DYNAMIC_CONTROL:-true}"
+    DEFAULT_MONITORING_INTERVAL="${DEFAULT_MONITORING_INTERVAL:-30}"
+    DEFAULT_CPU1_FANS_INPUT="${DEFAULT_CPU1_FANS_INPUT:-3 4 5}"
+    DEFAULT_CPU2_FANS_INPUT="${DEFAULT_CPU2_FANS_INPUT:-0 1 2}"
+    DEFAULT_MAX_TEMP_CPU="${DEFAULT_MAX_TEMP_CPU:-80}"
+    DEFAULT_LOG_LEVEL="${DEFAULT_LOG_LEVEL:-INFO}"
+    DEFAULT_CONNECTION_TIMEOUT="${DEFAULT_CONNECTION_TIMEOUT:-30}"
+    DEFAULT_COMMAND_RETRIES="${DEFAULT_COMMAND_RETRIES:-3}"
+    DEFAULT_TEMP_THRESHOLD_90="${DEFAULT_TEMP_THRESHOLD_90:-255}"
+    DEFAULT_TEMP_THRESHOLD_80="${DEFAULT_TEMP_THRESHOLD_80:-200}"
+    DEFAULT_TEMP_THRESHOLD_70="${DEFAULT_TEMP_THRESHOLD_70:-150}"
+    DEFAULT_TEMP_THRESHOLD_60="${DEFAULT_TEMP_THRESHOLD_60:-100}"
+    DEFAULT_TEMP_THRESHOLD_50="${DEFAULT_TEMP_THRESHOLD_50:-75}"
+    DEFAULT_TEMP_THRESHOLD_DEFAULT="${DEFAULT_TEMP_THRESHOLD_DEFAULT:-50}"
+}
+
 # Function to collect configuration
 collect_configuration() {
     print_color "$BLUE" "Configuration Setup:"
     print_color "$BLUE" "Please provide the following information for your iLO4 setup."
     echo ""
 
+    # Load existing configuration if available
+    load_existing_config
+    set_default_values
+
     # iLO connection details
     print_color "$CYAN" "=== iLO4 Connection Settings ==="
-    prompt_with_default "iLO4 IP address or hostname" "192.168.1.100" "ILO_HOST" false "^[a-zA-Z0-9.-]+$" "Please enter a valid IP address or hostname"
-    prompt_with_default "iLO4 username" "Administrator" "ILO_USER" false "^[a-zA-Z0-9._-]+$" "Please enter a valid username"
-    prompt_with_default "iLO4 password" "password" "ILO_PASS" "true"
+    prompt_with_default "iLO4 IP address or hostname" "$DEFAULT_ILO_HOST" "ILO_HOST" false "^[a-zA-Z0-9.-]+$" "Please enter a valid IP address or hostname"
+    prompt_with_default "iLO4 username" "$DEFAULT_ILO_USER" "ILO_USER" false "^[a-zA-Z0-9._-]+$" "Please enter a valid username"
+    prompt_with_default "iLO4 password" "$DEFAULT_ILO_PASS" "ILO_PASS" "true"
     echo ""
 
     # Fan configuration
     print_color "$CYAN" "=== Fan Configuration ==="
-    prompt_with_default "Number of fans" "6" "FAN_COUNT" false "^[0-9]+$" "Please enter a number"
-    prompt_with_default "Global minimum fan speed (0-255)" "60" "GLOBAL_MIN_SPEED" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-    prompt_with_default "PID minimum low value" "1600" "PID_MIN_LOW" false "^[0-9]+$" "Please enter a number"
+    prompt_with_default "Number of fans" "$DEFAULT_FAN_COUNT" "FAN_COUNT" false "^[0-9]+$" "Please enter a number"
+    prompt_with_default "Global minimum fan speed (0-255)" "$DEFAULT_GLOBAL_MIN_SPEED" "GLOBAL_MIN_SPEED" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+    prompt_with_default "PID minimum low value" "$DEFAULT_PID_MIN_LOW" "PID_MIN_LOW" false "^[0-9]+$" "Please enter a number"
     
     # Disabled sensors
     echo "Disabled sensors (comma-separated hex values, e.g., 07FB00,35,38):"
-    prompt_with_default "Sensors to disable" "07FB00,35,38" "DISABLED_SENSORS_INPUT"
+    prompt_with_default "Sensors to disable" "$DEFAULT_DISABLED_SENSORS_INPUT" "DISABLED_SENSORS_INPUT"
     echo ""
 
     # Temperature thresholds
     print_color "$CYAN" "=== Temperature Thresholds ==="
-    prompt_yes_no "Use default temperature thresholds" "y" "USE_DEFAULT_THRESHOLDS"
+    prompt_yes_no "Use current/default temperature thresholds" "y" "USE_DEFAULT_THRESHOLDS"
     
     if [[ "$USE_DEFAULT_THRESHOLDS" == "false" ]]; then
-        prompt_with_default "Emergency cooling temperature (°C)" "67" "TEMP_EMERGENCY" false "^[0-9]+$" "Please enter a number"
-        prompt_with_default "High temperature threshold (°C)" "58" "TEMP_HIGH" false "^[0-9]+$" "Please enter a number"
-        prompt_with_default "Medium-high temperature threshold (°C)" "54" "TEMP_MED_HIGH" false "^[0-9]+$" "Please enter a number"
-        prompt_with_default "Medium temperature threshold (°C)" "52" "TEMP_MEDIUM" false "^[0-9]+$" "Please enter a number"
-        prompt_with_default "Low-medium temperature threshold (°C)" "50" "TEMP_LOW_MED" false "^[0-9]+$" "Please enter a number"
-        
-        prompt_with_default "Emergency fan speed (0-255)" "255" "SPEED_EMERGENCY" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-        prompt_with_default "High temperature fan speed (0-255)" "39" "SPEED_HIGH" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-        prompt_with_default "Medium-high temperature fan speed (0-255)" "38" "SPEED_MED_HIGH" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-        prompt_with_default "Medium temperature fan speed (0-255)" "34" "SPEED_MEDIUM" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-        prompt_with_default "Low-medium temperature fan speed (0-255)" "32" "SPEED_LOW_MED" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
-        prompt_with_default "Default fan speed (0-255)" "30" "SPEED_DEFAULT" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "90°C threshold fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_90" "TEMP_THRESHOLD_90" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "80°C threshold fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_80" "TEMP_THRESHOLD_80" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "70°C threshold fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_70" "TEMP_THRESHOLD_70" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "60°C threshold fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_60" "TEMP_THRESHOLD_60" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "50°C threshold fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_50" "TEMP_THRESHOLD_50" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
+        prompt_with_default "Default fan speed (0-255)" "$DEFAULT_TEMP_THRESHOLD_DEFAULT" "TEMP_THRESHOLD_DEFAULT" false "^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$" "Please enter a number between 0 and 255"
     else
-        # Use defaults
-        TEMP_EMERGENCY=67; TEMP_HIGH=58; TEMP_MED_HIGH=54; TEMP_MEDIUM=52; TEMP_LOW_MED=50
-        SPEED_EMERGENCY=255; SPEED_HIGH=39; SPEED_MED_HIGH=38; SPEED_MEDIUM=34; SPEED_LOW_MED=32; SPEED_DEFAULT=30
+        # Use current/default values
+        TEMP_THRESHOLD_90="$DEFAULT_TEMP_THRESHOLD_90"
+        TEMP_THRESHOLD_80="$DEFAULT_TEMP_THRESHOLD_80"
+        TEMP_THRESHOLD_70="$DEFAULT_TEMP_THRESHOLD_70"
+        TEMP_THRESHOLD_60="$DEFAULT_TEMP_THRESHOLD_60"
+        TEMP_THRESHOLD_50="$DEFAULT_TEMP_THRESHOLD_50"
+        TEMP_THRESHOLD_DEFAULT="$DEFAULT_TEMP_THRESHOLD_DEFAULT"
     fi
     echo ""
 
     # Dynamic control settings
     print_color "$CYAN" "=== Dynamic Fan Control Settings ==="
-    prompt_yes_no "Enable dynamic temperature-based fan control" "y" "ENABLE_DYNAMIC_CONTROL"
+    prompt_yes_no "Enable dynamic temperature-based fan control" "$DEFAULT_ENABLE_DYNAMIC_CONTROL" "ENABLE_DYNAMIC_CONTROL"
 
     if [[ "$ENABLE_DYNAMIC_CONTROL" == "true" ]]; then
-        prompt_with_default "Temperature monitoring interval (seconds)" "30" "MONITORING_INTERVAL" false "^[0-9]+$" "Please enter a number"
+        prompt_with_default "Temperature monitoring interval (seconds)" "$DEFAULT_MONITORING_INTERVAL" "MONITORING_INTERVAL" false "^[0-9]+$" "Please enter a number"
         
         echo "CPU1 fan assignments (space-separated, e.g., 3 4 5):"
-        prompt_with_default "CPU1 fans" "3 4 5" "CPU1_FANS_INPUT"
+        prompt_with_default "CPU1 fans" "$DEFAULT_CPU1_FANS_INPUT" "CPU1_FANS_INPUT"
         
         echo "CPU2 fan assignments (space-separated, e.g., 0 1 2):"
-        prompt_with_default "CPU2 fans" "0 1 2" "CPU2_FANS_INPUT"
+        prompt_with_default "CPU2 fans" "$DEFAULT_CPU2_FANS_INPUT" "CPU2_FANS_INPUT"
         
-        prompt_with_default "Maximum safe CPU temperature (°C)" "80" "MAX_TEMP_CPU" false "^[0-9]+$" "Please enter a number"
+        prompt_with_default "Maximum safe CPU temperature (°C)" "$DEFAULT_MAX_TEMP_CPU" "MAX_TEMP_CPU" false "^[0-9]+$" "Please enter a number"
     else
-        MONITORING_INTERVAL="30"
-        CPU1_FANS_INPUT="3 4 5"
-        CPU2_FANS_INPUT="0 1 2"
-        MAX_TEMP_CPU="80"
+        MONITORING_INTERVAL="$DEFAULT_MONITORING_INTERVAL"
+        CPU1_FANS_INPUT="$DEFAULT_CPU1_FANS_INPUT"
+        CPU2_FANS_INPUT="$DEFAULT_CPU2_FANS_INPUT"
+        MAX_TEMP_CPU="$DEFAULT_MAX_TEMP_CPU"
     fi
     echo ""
 
     # Advanced settings
     print_color "$CYAN" "=== Advanced Settings ==="
-    prompt_with_default "Log level (DEBUG/INFO/WARN/ERROR)" "INFO" "LOG_LEVEL" false "^(DEBUG|INFO|WARN|ERROR)$" "Please enter DEBUG, INFO, WARN, or ERROR"
-    prompt_with_default "Connection timeout (seconds)" "30" "CONNECTION_TIMEOUT" false "^[0-9]+$" "Please enter a number"
-    prompt_with_default "Command retries" "3" "COMMAND_RETRIES" false "^[0-9]+$" "Please enter a number"
+    prompt_with_default "Log level (DEBUG/INFO/WARN/ERROR)" "$DEFAULT_LOG_LEVEL" "LOG_LEVEL" false "^(DEBUG|INFO|WARN|ERROR)$" "Please enter DEBUG, INFO, WARN, or ERROR"
+    prompt_with_default "Connection timeout (seconds)" "$DEFAULT_CONNECTION_TIMEOUT" "CONNECTION_TIMEOUT" false "^[0-9]+$" "Please enter a number"
+    prompt_with_default "Command retries" "$DEFAULT_COMMAND_RETRIES" "COMMAND_RETRIES" false "^[0-9]+$" "Please enter a number"
     echo ""
 }
 
@@ -427,15 +519,13 @@ download_and_configure_files() {
     sed -i "s|CONNECTION_TIMEOUT=.*|CONNECTION_TIMEOUT=$CONNECTION_TIMEOUT|g" /tmp/ilo4-fan-control.conf
     sed -i "s|COMMAND_RETRIES=.*|COMMAND_RETRIES=$COMMAND_RETRIES|g" /tmp/ilo4-fan-control.conf
     
-    # Update temperature thresholds if custom values were provided
-    if [[ "$USE_DEFAULT_THRESHOLDS" == "false" ]]; then
-        sed -i "s|TEMP_THRESHOLD_67=.*|TEMP_THRESHOLD_67=$SPEED_EMERGENCY|g" /tmp/ilo4-fan-control.conf
-        sed -i "s|TEMP_THRESHOLD_58=.*|TEMP_THRESHOLD_58=$SPEED_HIGH|g" /tmp/ilo4-fan-control.conf
-        sed -i "s|TEMP_THRESHOLD_54=.*|TEMP_THRESHOLD_54=$SPEED_MED_HIGH|g" /tmp/ilo4-fan-control.conf
-        sed -i "s|TEMP_THRESHOLD_52=.*|TEMP_THRESHOLD_52=$SPEED_MEDIUM|g" /tmp/ilo4-fan-control.conf
-        sed -i "s|TEMP_THRESHOLD_50=.*|TEMP_THRESHOLD_50=$SPEED_LOW_MED|g" /tmp/ilo4-fan-control.conf
-        sed -i "s|TEMP_THRESHOLD_DEFAULT=.*|TEMP_THRESHOLD_DEFAULT=$SPEED_DEFAULT|g" /tmp/ilo4-fan-control.conf
-    fi
+    # Update temperature thresholds
+    sed -i "s|TEMP_THRESHOLD_90=.*|TEMP_THRESHOLD_90=$TEMP_THRESHOLD_90|g" /tmp/ilo4-fan-control.conf
+    sed -i "s|TEMP_THRESHOLD_80=.*|TEMP_THRESHOLD_80=$TEMP_THRESHOLD_80|g" /tmp/ilo4-fan-control.conf
+    sed -i "s|TEMP_THRESHOLD_70=.*|TEMP_THRESHOLD_70=$TEMP_THRESHOLD_70|g" /tmp/ilo4-fan-control.conf
+    sed -i "s|TEMP_THRESHOLD_60=.*|TEMP_THRESHOLD_60=$TEMP_THRESHOLD_60|g" /tmp/ilo4-fan-control.conf
+    sed -i "s|TEMP_THRESHOLD_50=.*|TEMP_THRESHOLD_50=$TEMP_THRESHOLD_50|g" /tmp/ilo4-fan-control.conf
+    sed -i "s|TEMP_THRESHOLD_DEFAULT=.*|TEMP_THRESHOLD_DEFAULT=$TEMP_THRESHOLD_DEFAULT|g" /tmp/ilo4-fan-control.conf
     
     # Install files
     $SUDO_CMD mv /tmp/ilo4-fan-control.sh "$INSTALL_DIR/ilo4-fan-control.sh"

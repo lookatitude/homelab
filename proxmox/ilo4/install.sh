@@ -598,49 +598,48 @@ install_dependencies() {
     echo ""
 }
 
-# Add error handling and logging to ensure feedback is provided for all critical steps in the installation process.
-trap 'print_color "$RED" "An unexpected error occurred. Exiting..."' ERR
+# Add detailed error logging to identify the source of unexpected errors
+trap 'print_color "$RED" "An unexpected error occurred at line $LINENO. Exiting..."' ERR
 set -o errtrace
 
-# Enhance feedback mechanisms for remote execution
-print_color "$BLUE" "Starting iLO4 Fan Control Installation..."
+# Add debug messages to critical steps
+print_color "$BLUE" "Debug: Starting iLO4 Fan Control Installation..."
 
-# Ensure all critical steps provide progress messages
-print_color "$BLUE" "Step 1: Detecting OS..."
+print_color "$BLUE" "Debug: Step 1 - Detecting OS..."
 detect_os
 
-print_color "$BLUE" "Step 2: Checking prerequisites..."
+print_color "$BLUE" "Debug: Step 2 - Checking prerequisites..."
 check_prerequisites
 
-print_color "$BLUE" "Step 3: Checking privileges..."
+print_color "$BLUE" "Debug: Step 3 - Checking privileges..."
 check_privileges
 
-print_color "$BLUE" "Step 4: Installing dependencies..."
+print_color "$BLUE" "Debug: Step 4 - Installing dependencies..."
 install_dependencies
 
-print_color "$BLUE" "Step 5: Loading existing configuration..."
+print_color "$BLUE" "Debug: Step 5 - Loading existing configuration..."
 load_existing_config
 set_default_values
 
-print_color "$BLUE" "Step 6: Configuring settings..."
+print_color "$BLUE" "Debug: Step 6 - Configuring settings..."
 configure_settings
 
-print_color "$BLUE" "Step 7: Creating directories..."
+print_color "$BLUE" "Debug: Step 7 - Creating directories..."
 create_directories
 
-print_color "$BLUE" "Step 8: Downloading and installing files..."
+print_color "$BLUE" "Debug: Step 8 - Downloading and installing files..."
 download_and_install_files
 
-print_color "$BLUE" "Step 9: Creating configuration file..."
+print_color "$BLUE" "Debug: Step 9 - Creating configuration file..."
 create_configuration_file
 
-print_color "$BLUE" "Step 10: Testing configuration..."
+print_color "$BLUE" "Debug: Step 10 - Testing configuration..."
 test_configuration
 
-print_color "$BLUE" "Step 11: Configuring systemd service..."
+print_color "$BLUE" "Debug: Step 11 - Configuring systemd service..."
 configure_service
 
-print_color "$BLUE" "Step 12: Starting service..."
+print_color "$BLUE" "Debug: Step 12 - Starting service..."
 while true; do
     read -p "Would you like to start the iLO4 fan control service now? (y/n): " -n 1 -r
     echo ""
@@ -664,5 +663,5 @@ while true; do
     fi
 done
 
-print_color "$BLUE" "Step 13: Showing completion message..."
+print_color "$BLUE" "Debug: Step 13 - Showing completion message..."
 show_completion_message

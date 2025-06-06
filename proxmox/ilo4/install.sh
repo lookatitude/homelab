@@ -126,62 +126,35 @@ check_privileges() {
 # Function to load existing configuration if available
 load_existing_config() {
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
-    
+
     if [[ -f "$config_file" ]]; then
-        print_color "$GREEN" "✓ Found existing configuration at $config_file"
-        print_color "$BLUE" "Loading existing settings as defaults..."
-        
-        # Extract values using parameter expansion with defaults
-        EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "")
-        EXISTING_ILO_USER=$(grep '^ILO_USER=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "")
-        EXISTING_FAN_COUNT=$(grep '^FAN_COUNT=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "6")
-        EXISTING_GLOBAL_MIN_SPEED=$(grep '^GLOBAL_MIN_SPEED=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "60")
+        # Extract existing values
         EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "true")
         EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
         EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "30")
-        
+
         print_color "$GREEN" "✓ Loaded existing configuration values"
         echo ""
         return 0
     else
         print_color "$BLUE" "No existing configuration found, downloading template configuration..."
-        
+
         # Create config directory if it doesn't exist
         if [[ ! -d "$CONFIG_DIR" ]]; then
             $SUDO_CMD mkdir -p "$CONFIG_DIR"
         fi
-        
+
         # Download template configuration file
         if curl -fsSL "$CONFIG_URL" -o "/tmp/ilo4-fan-control.conf.template"; then
             print_color "$GREEN" "✓ Downloaded template configuration"
-            
-            # Extract values from template for defaults
-            EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "<ip>")
-            EXISTING_ILO_USER=$(grep '^ILO_USER=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "<username>")
-            EXISTING_FAN_COUNT=$(grep '^FAN_COUNT=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "6")
-            EXISTING_GLOBAL_MIN_SPEED=$(grep '^GLOBAL_MIN_SPEED=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "60")
-            EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "true")
-            EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
-            EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "30")
-            
-            print_color "$GREEN" "✓ Loaded template configuration values as defaults"
-            
-            # Clean up template file
             rm -f "/tmp/ilo4-fan-control.conf.template"
         else
-            print_color "$YELLOW" "⚠ Could not download template configuration, using built-in defaults"
-            # Set empty defaults that will be handled by set_default_values()
-            EXISTING_ILO_HOST=""
-            EXISTING_ILO_USER=""
-            EXISTING_FAN_COUNT=""
-            EXISTING_GLOBAL_MIN_SPEED=""
-            EXISTING_ENABLE_DYNAMIC_CONTROL=""
-            EXISTING_LOG_LEVEL=""
-            EXISTING_MONITORING_INTERVAL=""
+            print_color "$RED" "✗ Failed to download template configuration"
+            return 1
         fi
-        
+
         echo ""
-        return 1
+        return 0
     fi
 }
 

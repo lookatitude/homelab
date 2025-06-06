@@ -602,58 +602,67 @@ install_dependencies() {
 trap 'print_color "$RED" "An unexpected error occurred. Exiting..."' ERR
 set -o errtrace
 
-# Main installation function
-main() {
-    show_header
-    warn_root_access
-    detect_os
-    check_prerequisites
-    check_privileges
-    install_dependencies
-    
-    print_color "$BLUE" "Step 1: Loading existing configuration..."
-    load_existing_config
-    set_default_values
-    
-    configure_settings
-    create_directories
-    download_and_install_files
-    create_configuration_file
-    test_configuration
-    configure_service
-    
-    # Start the service if user confirms
-    print_color "$BLUE" "Step 7: Starting service..."
-    while true; do
-        read -p "Would you like to start the iLO4 fan control service now? (y/n): " -n 1 -r
-        echo ""
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_color "$YELLOW" "Starting iLO4 fan control service..."
-            if $SUDO_CMD systemctl start ilo4-fan-control.service; then
-                print_color "$GREEN" "✓ Service started successfully"
-                
-                # Show service status
-                sleep 2
-                print_color "$BLUE" "Service status:"
-                $SUDO_CMD systemctl status ilo4-fan-control.service --no-pager -l
-            else
-                print_color "$YELLOW" "⚠ Service failed to start, check logs for details"
-                print_color "$YELLOW" "You can start it manually later with: ${SUDO_CMD} systemctl start ilo4-fan-control"
-            fi
-            break
-        elif [[ $REPLY =~ ^[Nn]$ ]]; then
-            print_color "$BLUE" "Service not started. You can start it manually later."
-            break
-        else
-            print_color "$RED" "Please answer y or n"
-        fi
-    done
-    echo ""
-    
-    show_completion_message
-}
+# Enhance feedback mechanisms for remote execution
+print_color "$BLUE" "Starting iLO4 Fan Control Installation..."
 
-# Run main function if script is executed directly
-if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
+# Ensure all critical steps provide progress messages
+print_color "$BLUE" "Step 1: Detecting OS..."
+detect_os
+
+print_color "$BLUE" "Step 2: Checking prerequisites..."
+check_prerequisites
+
+print_color "$BLUE" "Step 3: Checking privileges..."
+check_privileges
+
+print_color "$BLUE" "Step 4: Installing dependencies..."
+install_dependencies
+
+print_color "$BLUE" "Step 5: Loading existing configuration..."
+load_existing_config
+set_default_values
+
+print_color "$BLUE" "Step 6: Configuring settings..."
+configure_settings
+
+print_color "$BLUE" "Step 7: Creating directories..."
+create_directories
+
+print_color "$BLUE" "Step 8: Downloading and installing files..."
+download_and_install_files
+
+print_color "$BLUE" "Step 9: Creating configuration file..."
+create_configuration_file
+
+print_color "$BLUE" "Step 10: Testing configuration..."
+test_configuration
+
+print_color "$BLUE" "Step 11: Configuring systemd service..."
+configure_service
+
+print_color "$BLUE" "Step 12: Starting service..."
+while true; do
+    read -p "Would you like to start the iLO4 fan control service now? (y/n): " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        print_color "$YELLOW" "Starting iLO4 fan control service..."
+        if $SUDO_CMD systemctl start ilo4-fan-control.service; then
+            print_color "$GREEN" "✓ Service started successfully"
+            sleep 2
+            print_color "$BLUE" "Service status:"
+            $SUDO_CMD systemctl status ilo4-fan-control.service --no-pager -l
+        else
+            print_color "$YELLOW" "⚠ Service failed to start, check logs for details"
+            print_color "$YELLOW" "You can start it manually later with: ${SUDO_CMD} systemctl start ilo4-fan-control"
+        fi
+        break
+    elif [[ $REPLY =~ ^[Nn]$ ]]; then
+        print_color "$BLUE" "Service not started. You can start it manually later."
+        break
+    else
+        print_color "$RED" "Please answer y or n"
+    fi
+done
+
+print_color "$BLUE" "Step 13: Showing completion message..."
+show_completion_message

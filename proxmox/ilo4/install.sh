@@ -2,7 +2,7 @@
 
 # iLO4 Fan Control Installation Script for Proxmox/Debian
 # This script downloads, configures, and installs the iLO4 fan control service
-# Usage: sh -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/master/proxmox/ilo4/install.sh)"
+# Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
 
 set -euo pipefail
 

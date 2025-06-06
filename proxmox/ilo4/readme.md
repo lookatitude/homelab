@@ -16,7 +16,7 @@ A comprehensive fan control solution for HP servers with iLO4 that automatically
 Run this one-liner to download and install everything automatically:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
 ```
 
 The installation script will:

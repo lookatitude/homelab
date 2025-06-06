@@ -535,41 +535,144 @@ show_completion_message() {
     echo ""
 }
 
+# Function to warn about root access and get confirmation
+warn_root_access() {
+    if [[ $EUID -eq 0 ]]; then
+        print_color "$YELLOW" "=========================================="
+        print_color "$YELLOW" "⚠  ROOT ACCESS WARNING ⚠"
+        print_color "$YELLOW" "=========================================="
+        print_color "$RED" "You are running this installer as root!"
+        print_color "$YELLOW" "While this is not necessarily dangerous, it's recommended to:"
+        print_color "$YELLOW" "• Run as a regular user with sudo access"
+        print_color "$YELLOW" "• Only use root when absolutely necessary"
+        echo ""
+        print_color "$BLUE" "This installer will:"
+        print_color "$BLUE" "• Install files to system directories"
+        print_color "$BLUE" "• Create/modify configuration files"
+        print_color "$BLUE" "• Install and configure systemd services"
+        print_color "$BLUE" "• Install dependencies if needed"
+        echo ""
+        
+        while true; do
+            read -p "Do you want to continue running as root? (y/n): " -n 1 -r
+            echo ""
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_color "$GREEN" "Continuing with root access..."
+                echo ""
+                break
+            elif [[ $REPLY =~ ^[Nn]$ ]]; then
+                print_color "$YELLOW" "Installation cancelled by user."
+                print_color "$BLUE" "To run as regular user: exit and run without sudo/root"
+                exit 0
+            else
+                print_color "$RED" "Please answer y or n"
+            fi
+        done
+    fi
+}
+
+# Function to install dependencies
+install_dependencies() {
+    print_color "$BLUE" "Checking and installing dependencies..."
+    
+    local packages_to_install=()
+    local required_packages=("sshpass" "wget" "curl")
+    
+    # Check which packages are missing
+    for package in "${required_packages[@]}"; do
+        if ! command -v "$package" &> /dev/null; then
+            packages_to_install+=("$package")
+        fi
+    done
+    
+    if [[ ${#packages_to_install[@]} -gt 0 ]]; then
+        print_color "$YELLOW" "Installing missing packages: ${packages_to_install[*]}"
+        
+        if command -v apt-get &> /dev/null; then
+            $SUDO_CMD apt-get update
+            $SUDO_CMD apt-get install -y "${packages_to_install[@]}"
+        elif command -v yum &> /dev/null; then
+            $SUDO_CMD yum install -y "${packages_to_install[@]}"
+        elif command -v dnf &> /dev/null; then
+            $SUDO_CMD dnf install -y "${packages_to_install[@]}"
+        else
+            print_color "$RED" "✗ Cannot install packages automatically on this system"
+            print_color "$YELLOW" "Please install these packages manually: ${packages_to_install[*]}"
+            exit 1
+        fi
+        
+        # Verify installation
+        local failed_packages=()
+        for package in "${packages_to_install[@]}"; do
+            if ! command -v "$package" &> /dev/null; then
+                failed_packages+=("$package")
+            fi
+        done
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            print_color "$RED" "✗ Failed to install: ${failed_packages[*]}"
+            exit 1
+        else
+            print_color "$GREEN" "✓ All dependencies installed successfully"
+        fi
+    else
+        print_color "$GREEN" "✓ All dependencies are already installed"
+    fi
+    echo ""
+}
+
 # Main installation function
 main() {
     show_header
+    warn_root_access
     detect_os
     check_prerequisites
     check_privileges
+    install_dependencies
     
-    print_color "$BLUE" "Step 1: Loading configuration..."
+    print_color "$BLUE" "Step 1: Loading existing configuration..."
     load_existing_config
     set_default_values
     
     configure_settings
     create_directories
-    install_sshpass
     download_and_install_files
     create_configuration_file
     test_configuration
     configure_service
+    
+    # Start the service if user confirms
+    print_color "$BLUE" "Step 7: Starting service..."
+    while true; do
+        read -p "Would you like to start the iLO4 fan control service now? (y/n): " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_color "$YELLOW" "Starting iLO4 fan control service..."
+            if $SUDO_CMD systemctl start ilo4-fan-control.service; then
+                print_color "$GREEN" "✓ Service started successfully"
+                
+                # Show service status
+                sleep 2
+                print_color "$BLUE" "Service status:"
+                $SUDO_CMD systemctl status ilo4-fan-control.service --no-pager -l
+            else
+                print_color "$YELLOW" "⚠ Service failed to start, check logs for details"
+                print_color "$YELLOW" "You can start it manually later with: ${SUDO_CMD} systemctl start ilo4-fan-control"
+            fi
+            break
+        elif [[ $REPLY =~ ^[Nn]$ ]]; then
+            print_color "$BLUE" "Service not started. You can start it manually later."
+            break
+        else
+            print_color "$RED" "Please answer y or n"
+        fi
+    done
+    echo ""
+    
     show_completion_message
 }
 
-# Check if running as root and warn user
-if [[ $EUID -eq 0 ]]; then
-    print_color "$YELLOW" "⚠ WARNING: Running as root detected!"
-    print_color "$YELLOW" "It's generally recommended to run this script as a regular user with sudo access."
-    print_color "$YELLOW" "Running as root means the script will have elevated privileges throughout execution."
-    echo ""
-    read -p "Are you sure you want to continue as root? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_color "$RED" "Installation cancelled."
-        exit 1
-    fi
-    echo ""
+# Run main function if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
 fi
-
-# Execute main function
-main "$@"

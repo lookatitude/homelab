@@ -127,7 +127,9 @@ check_privileges() {
 load_existing_config() {
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
 
+    print_color "$BLUE" "Debug: Checking if configuration file exists"
     if [[ -f "$config_file" ]]; then
+        print_color "$GREEN" "✓ Configuration file found"
         # Extract existing values
         EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "true")
         EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
@@ -141,10 +143,12 @@ load_existing_config() {
 
         # Create config directory if it doesn't exist
         if [[ ! -d "$CONFIG_DIR" ]]; then
+            print_color "$BLUE" "Debug: Creating configuration directory"
             $SUDO_CMD mkdir -p "$CONFIG_DIR"
         fi
 
         # Download template configuration file
+        print_color "$BLUE" "Debug: Downloading template configuration file"
         if curl -fsSL "$CONFIG_URL" -o "/tmp/ilo4-fan-control.conf.template"; then
             print_color "$GREEN" "✓ Downloaded template configuration"
             rm -f "/tmp/ilo4-fan-control.conf.template"

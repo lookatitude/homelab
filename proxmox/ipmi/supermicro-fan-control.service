@@ -1,0 +1,32 @@
+[Unit]
+Description=Supermicro IPMI Fan Control Service
+Documentation=https://github.com/petersulyok/smfc
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/supermicro-fan-control/supermicro-fan-control.sh --daemon
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=30
+User=root
+Group=root
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log /tmp
+
+# Environment
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=supermicro-fan-control
+
+[Install]
+WantedBy=multi-user.target

@@ -598,6 +598,10 @@ install_dependencies() {
     echo ""
 }
 
+# Add error handling and logging to ensure feedback is provided for all critical steps in the installation process.
+trap 'print_color "$RED" "An unexpected error occurred. Exiting..."' ERR
+set -o errtrace
+
 # Main installation function
 main() {
     show_header

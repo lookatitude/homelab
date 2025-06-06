@@ -396,30 +396,7 @@ EOF
     echo ""
 }
 
-# Function to install sshpass if needed
-install_sshpass() {
-    if ! command -v sshpass &> /dev/null; then
-        print_color "$YELLOW" "Installing sshpass for SSH password authentication..."
-        
-        if command -v apt-get &> /dev/null; then
-            $SUDO_CMD apt-get update && $SUDO_CMD apt-get install -y sshpass
-        elif command -v yum &> /dev/null; then
-            $SUDO_CMD yum install -y sshpass
-        elif command -v dnf &> /dev/null; then
-            $SUDO_CMD dnf install -y sshpass
-        else
-            print_color "$YELLOW" "⚠ Could not install sshpass automatically"
-            print_color "$YELLOW" "Please install sshpass manually for the service to work"
-        fi
-        
-        if command -v sshpass &> /dev/null; then
-            print_color "$GREEN" "✓ sshpass installed successfully"
-        fi
-    else
-        print_color "$GREEN" "✓ sshpass already installed"
-    fi
-    echo ""
-}
+
 
 # Function to test configuration
 test_configuration() {
@@ -576,7 +553,7 @@ install_dependencies() {
     print_color "$BLUE" "Checking and installing dependencies..."
     
     local packages_to_install=()
-    local required_packages=("sshpass" "wget" "curl")
+    local required_packages=("wget" "curl")
     
     # Check which packages are missing
     for package in "${required_packages[@]}"; do
@@ -673,6 +650,6 @@ main() {
 }
 
 # Run main function if script is executed directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

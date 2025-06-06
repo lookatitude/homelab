@@ -20,15 +20,25 @@ echo ""
 
 # Check if running as root
 if [[ $EUID -eq 0 ]]; then
-    echo "ERROR: This script should not be run as root directly."
-    echo "Please run as a regular user with sudo access."
-    exit 1
-fi
-
-# Check if sudo is available
-if ! command -v sudo &> /dev/null; then
-    echo "ERROR: sudo is not available. Please install sudo first."
-    exit 1
+    echo "⚠ WARNING: Running as root detected!"
+    echo "It's generally recommended to run this script as a regular user with sudo access."
+    echo "Running as root means the script will have elevated privileges throughout execution."
+    echo ""
+    read -p "Are you sure you want to continue as root? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled."
+        exit 0
+    fi
+    echo "Continuing with root privileges..."
+    SUDO_CMD=""
+else
+    # Check if sudo is available for non-root users
+    if ! command -v sudo &> /dev/null; then
+        echo "ERROR: sudo is not available. Please install sudo first or run as root."
+        exit 1
+    fi
+    SUDO_CMD="sudo"
 fi
 
 # Function to prompt for input with default
@@ -177,15 +187,15 @@ fi
 
 if [[ ${#MISSING_PACKAGES[@]} -gt 0 ]]; then
     echo "Installing missing packages: ${MISSING_PACKAGES[*]}"
-    sudo apt update
-    sudo apt install -y "${MISSING_PACKAGES[@]}"
+    $SUDO_CMD apt update
+    $SUDO_CMD apt install -y "${MISSING_PACKAGES[@]}"
 else
     echo "All required packages are already installed."
 fi
 
 echo "Step 2: Creating directories..."
-sudo mkdir -p /usr/local/bin
-sudo mkdir -p /var/log
+$SUDO_CMD mkdir -p /usr/local/bin
+$SUDO_CMD mkdir -p /var/log
 
 echo "Step 3: Downloading fan control script..."
 # Download the script from repository
@@ -210,8 +220,8 @@ sed -i "s|CPU1_FANS=.*|CPU1_FANS=$CPU1_FANS|g" /tmp/ilo4-fan-control.sh
 sed -i "s|CPU2_FANS=.*|CPU2_FANS=$CPU2_FANS|g" /tmp/ilo4-fan-control.sh
 
 # Install the configured script
-sudo mv /tmp/ilo4-fan-control.sh /usr/local/bin/ilo4-fan-control.sh
-sudo chmod +x /usr/local/bin/ilo4-fan-control.sh
+$SUDO_CMD mv /tmp/ilo4-fan-control.sh /usr/local/bin/ilo4-fan-control.sh
+$SUDO_CMD chmod +x /usr/local/bin/ilo4-fan-control.sh
 
 echo "Step 5: Downloading and installing systemd service..."
 # Download the service file from repository
@@ -222,13 +232,11 @@ if ! wget -q "$SERVICE_URL" -O /tmp/ilo4-fan-control.service; then
 fi
 
 # Install service file
-sudo mv /tmp/ilo4-fan-control.service /etc/systemd/system/ilo4-fan-control.service
-# Install service file
-sudo mv /tmp/ilo4-fan-control.service /etc/systemd/system/ilo4-fan-control.service
+$SUDO_CMD mv /tmp/ilo4-fan-control.service /etc/systemd/system/ilo4-fan-control.service
 
 echo "Step 6: Enabling and configuring systemd service..."
-sudo systemctl daemon-reload
-sudo systemctl enable ilo4-fan-control.service
+$SUDO_CMD systemctl daemon-reload
+$SUDO_CMD systemctl enable ilo4-fan-control.service
 
 echo "Step 7: Testing the configuration..."
 echo "Testing SSH connection to iLO..."
@@ -236,7 +244,7 @@ if timeout 10 sshpass -p "$ILO_PASS" ssh -o StrictHostKeyChecking=no -o ConnectT
     echo "✓ SSH connection to iLO successful"
     
     echo "Running a quick test of the fan control script..."
-    if sudo timeout 60 /usr/local/bin/ilo4-fan-control.sh &>/dev/null; then
+    if $SUDO_CMD timeout 60 /usr/local/bin/ilo4-fan-control.sh &>/dev/null; then
         echo "✓ Script test completed successfully"
     else
         echo "⚠ Script test had issues, but service is installed"
@@ -264,15 +272,15 @@ echo "  Min Speed: $GLOBAL_MIN_SPEED"
 echo "  Dynamic Control: $ENABLE_DYNAMIC_CONTROL"
 echo ""
 echo "Service Management Commands:"
-echo "  Start service:    sudo systemctl start ilo4-fan-control"
-echo "  Stop service:     sudo systemctl stop ilo4-fan-control"
-echo "  Check status:     sudo systemctl status ilo4-fan-control"
-echo "  View logs:        sudo journalctl -u ilo4-fan-control -f"
-echo "  View script logs: sudo tail -f /var/log/ilo4-fan-control.log"
+echo "  Start service:    ${SUDO_CMD} systemctl start ilo4-fan-control"
+echo "  Stop service:     ${SUDO_CMD} systemctl stop ilo4-fan-control"
+echo "  Check status:     ${SUDO_CMD} systemctl status ilo4-fan-control"
+echo "  View logs:        ${SUDO_CMD} journalctl -u ilo4-fan-control -f"
+echo "  View script logs: ${SUDO_CMD} tail -f /var/log/ilo4-fan-control.log"
 echo ""
 echo "The service is enabled and will start automatically on boot."
-echo "To start it now, run: sudo systemctl start ilo4-fan-control"
+echo "To start it now, run: ${SUDO_CMD} systemctl start ilo4-fan-control"
 echo ""
 echo "If you need to modify the configuration later, edit:"
 echo "  /usr/local/bin/ilo4-fan-control.sh"
-echo "Then restart the service with: sudo systemctl restart ilo4-fan-control"
+echo "Then restart the service with: ${SUDO_CMD} systemctl restart ilo4-fan-control"

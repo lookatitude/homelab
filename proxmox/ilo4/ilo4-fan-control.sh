@@ -11,11 +11,11 @@ exec 2> >(tee -a "$LOG_FILE" >&2)
 echo "$(date): Starting iLO4 fan control script..."
 
 # === CONFIGURATION ===
-ILO_HOST="10.10.10.2"  # iLO IP or hostname
-ILO_USER="Administrator"
+ILO_HOST="<ip>"  # iLO IP or hostname
+ILO_USER="<username>"
 
 USE_SSH_PASS=true              # Set to false to use SSH key auth
-ILO_PASS="L00Kadmin"           # Required only if USE_SSH_PASS=true
+ILO_PASS="<password>"           # Required only if USE_SSH_PASS=true
 
 FAN_COUNT=6                    # Number of fans (fan 0 to FAN_COUNT-1)
 GLOBAL_MIN_SPEED=60           # Minimum fan speed

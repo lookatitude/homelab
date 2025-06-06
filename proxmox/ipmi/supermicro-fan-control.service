@@ -6,7 +6,7 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/supermicro-fan-control/supermicro-fan-control.sh --daemon
+ExecStart=/usr/local/bin/supermicro-fan-control.sh --daemon
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=always
 RestartSec=30

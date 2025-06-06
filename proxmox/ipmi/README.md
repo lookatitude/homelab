@@ -140,13 +140,13 @@ THRESHOLD_UPPER=(1600 1700 1800)   # Upper thresholds: non-critical, critical, n
 
 ```bash
 # Run as daemon (continuous monitoring)
-sudo /opt/supermicro-fan-control/supermicro-fan-control.sh --daemon
+sudo /usr/local/bin/supermicro-fan-control.sh --daemon
 
 # Initialize system only
-sudo /opt/supermicro-fan-control/supermicro-fan-control.sh --init-only
+sudo /usr/local/bin/supermicro-fan-control.sh --init-only
 
 # Set sensor thresholds only
-sudo /opt/supermicro-fan-control/supermicro-fan-control.sh --set-thresholds
+sudo /usr/local/bin/supermicro-fan-control.sh --set-thresholds
 
 # Show current status
 sudo supermicro-fan-control.sh --status

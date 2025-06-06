@@ -174,45 +174,41 @@ set_default_values() {
     DEFAULT_MONITORING_INTERVAL="${EXISTING_MONITORING_INTERVAL:-30}"
 }
 
-# Function to get user input for configuration
+# Update configure_settings to include all configurations
 configure_settings() {
     print_color "$BLUE" "Step 2: Configuration Settings"
     print_color "$BLUE" "Please provide the following information:"
     echo ""
-    
+
     # iLO Host
     while true; do
         read -p "Enter iLO IP address or hostname [$DEFAULT_ILO_HOST]: " ILO_HOST
         ILO_HOST=${ILO_HOST:-$DEFAULT_ILO_HOST}
-        
         if [[ "$ILO_HOST" != "<ip>" ]] && [[ -n "$ILO_HOST" ]]; then
             break
         else
             print_color "$RED" "Please enter a valid iLO IP address or hostname"
         fi
     done
-    
+
     # iLO User
     while true; do
         read -p "Enter iLO username [$DEFAULT_ILO_USER]: " ILO_USER
         ILO_USER=${ILO_USER:-$DEFAULT_ILO_USER}
-        
         if [[ "$ILO_USER" != "<username>" ]] && [[ -n "$ILO_USER" ]]; then
             break
         else
             print_color "$RED" "Please enter a valid iLO username"
         fi
     done
-    
+
     # iLO Password
     while true; do
         read -s -p "Enter iLO password: " ILO_PASS
         echo ""
-        
         if [[ -n "$ILO_PASS" ]]; then
             read -s -p "Confirm iLO password: " ILO_PASS_CONFIRM
             echo ""
-            
             if [[ "$ILO_PASS" == "$ILO_PASS_CONFIRM" ]]; then
                 break
             else
@@ -222,27 +218,58 @@ configure_settings() {
             print_color "$RED" "Password cannot be empty"
         fi
     done
-    
+
     # Fan Count
     read -p "Enter number of fans [$DEFAULT_FAN_COUNT]: " FAN_COUNT
     FAN_COUNT=${FAN_COUNT:-$DEFAULT_FAN_COUNT}
-    
+
     # Global Minimum Speed
     read -p "Enter global minimum fan speed (0-255) [$DEFAULT_GLOBAL_MIN_SPEED]: " GLOBAL_MIN_SPEED
     GLOBAL_MIN_SPEED=${GLOBAL_MIN_SPEED:-$DEFAULT_GLOBAL_MIN_SPEED}
-    
+
     # Dynamic Control
     read -p "Enable dynamic temperature control? (true/false) [$DEFAULT_ENABLE_DYNAMIC_CONTROL]: " ENABLE_DYNAMIC_CONTROL
     ENABLE_DYNAMIC_CONTROL=${ENABLE_DYNAMIC_CONTROL:-$DEFAULT_ENABLE_DYNAMIC_CONTROL}
-    
+
     # Monitoring Interval
     read -p "Temperature monitoring interval (seconds) [$DEFAULT_MONITORING_INTERVAL]: " MONITORING_INTERVAL
     MONITORING_INTERVAL=${MONITORING_INTERVAL:-$DEFAULT_MONITORING_INTERVAL}
-    
+
     # Log Level
     read -p "Log level (DEBUG/INFO/WARN/ERROR) [$DEFAULT_LOG_LEVEL]: " LOG_LEVEL
     LOG_LEVEL=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
-    
+
+    # Additional configurations
+    read -p "Maximum safe CPU temperature [$MAX_TEMP_CPU]: " MAX_TEMP_CPU
+    MAX_TEMP_CPU=${MAX_TEMP_CPU:-80}
+
+    read -p "Emergency fan speed [$EMERGENCY_SPEED]: " EMERGENCY_SPEED
+    EMERGENCY_SPEED=${EMERGENCY_SPEED:-255}
+
+    read -p "SSH connection timeout (seconds) [$CONNECTION_TIMEOUT]: " CONNECTION_TIMEOUT
+    CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-30}
+
+    read -p "Number of retries for failed commands [$COMMAND_RETRIES]: " COMMAND_RETRIES
+    COMMAND_RETRIES=${COMMAND_RETRIES:-3}
+
+    read -p "Maximum log file size [$MAX_LOG_SIZE]: " MAX_LOG_SIZE
+    MAX_LOG_SIZE=${MAX_LOG_SIZE:-"50M"}
+
+    read -p "Days to keep old log files [$LOG_RETENTION_DAYS]: " LOG_RETENTION_DAYS
+    LOG_RETENTION_DAYS=${LOG_RETENTION_DAYS:-30}
+
+    read -p "Retries for network connectivity check [$NETWORK_CHECK_RETRIES]: " NETWORK_CHECK_RETRIES
+    NETWORK_CHECK_RETRIES=${NETWORK_CHECK_RETRIES:-30}
+
+    read -p "Seconds between network checks [$NETWORK_CHECK_INTERVAL]: " NETWORK_CHECK_INTERVAL
+    NETWORK_CHECK_INTERVAL=${NETWORK_CHECK_INTERVAL:-2}
+
+    read -p "SSH keep-alive interval [$SSH_ALIVE_INTERVAL]: " SSH_ALIVE_INTERVAL
+    SSH_ALIVE_INTERVAL=${SSH_ALIVE_INTERVAL:-10}
+
+    read -p "Maximum SSH keep-alive failures [$SSH_ALIVE_COUNT_MAX]: " SSH_ALIVE_COUNT_MAX
+    SSH_ALIVE_COUNT_MAX=${SSH_ALIVE_COUNT_MAX:-3}
+
     echo ""
     print_color "$GREEN" "✓ Configuration settings collected"
     echo ""

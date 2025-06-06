@@ -123,9 +123,9 @@ check_privileges() {
     echo ""
 }
 
-# Function to load existing configuration if available
+# Ensure the configuration file path is consistently checked
 load_existing_config() {
-    local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
+    local config_file="/etc/ilo4-fan-control/ilo4-fan-control.conf"
 
     print_color "$BLUE" "Debug: Checking if configuration file exists"
     if [[ -f "$config_file" ]]; then
@@ -142,16 +142,17 @@ load_existing_config() {
         print_color "$BLUE" "No existing configuration found, downloading template configuration..."
 
         # Create config directory if it doesn't exist
-        if [[ ! -d "$CONFIG_DIR" ]]; then
+        if [[ ! -d "/etc/ilo4-fan-control" ]]; then
             print_color "$BLUE" "Debug: Creating configuration directory"
-            $SUDO_CMD mkdir -p "$CONFIG_DIR"
+            $SUDO_CMD mkdir -p "/etc/ilo4-fan-control"
         fi
 
         # Download template configuration file
         print_color "$BLUE" "Debug: Downloading template configuration file"
         if curl -fsSL "$CONFIG_URL" -o "/tmp/ilo4-fan-control.conf.template"; then
             print_color "$GREEN" "✓ Downloaded template configuration"
-            rm -f "/tmp/ilo4-fan-control.conf.template"
+            $SUDO_CMD mv "/tmp/ilo4-fan-control.conf.template" "$config_file"
+            $SUDO_CMD chmod 600 "$config_file"
         else
             print_color "$RED" "✗ Failed to download template configuration"
             return 1
@@ -163,6 +164,7 @@ load_existing_config() {
 }
 
 # Function to set default values
+# Ensure all variables are initialized in set_default_values
 set_default_values() {
     # Set defaults (use existing values if available, otherwise use installer defaults)
     DEFAULT_ILO_HOST="${EXISTING_ILO_HOST:-<ip>}"
@@ -172,9 +174,19 @@ set_default_values() {
     DEFAULT_ENABLE_DYNAMIC_CONTROL="${EXISTING_ENABLE_DYNAMIC_CONTROL:-true}"
     DEFAULT_LOG_LEVEL="${EXISTING_LOG_LEVEL:-INFO}"
     DEFAULT_MONITORING_INTERVAL="${EXISTING_MONITORING_INTERVAL:-30}"
+    MAX_TEMP_CPU="${MAX_TEMP_CPU:-80}"
+    EMERGENCY_SPEED="${EMERGENCY_SPEED:-255}"
+    CONNECTION_TIMEOUT="${CONNECTION_TIMEOUT:-30}"
+    COMMAND_RETRIES="${COMMAND_RETRIES:-3}"
+    MAX_LOG_SIZE="${MAX_LOG_SIZE:-50M}"
+    LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-30}"
+    NETWORK_CHECK_RETRIES="${NETWORK_CHECK_RETRIES:-30}"
+    NETWORK_CHECK_INTERVAL="${NETWORK_CHECK_INTERVAL:-2}"
+    SSH_ALIVE_INTERVAL="${SSH_ALIVE_INTERVAL:-10}"
+    SSH_ALIVE_COUNT_MAX="${SSH_ALIVE_COUNT_MAX:-3}"
 }
 
-# Update configure_settings to include all configurations
+# Update configure_settings to ensure comments are excluded from prompts
 configure_settings() {
     print_color "$BLUE" "Step 2: Configuration Settings"
     print_color "$BLUE" "Please provide the following information:"

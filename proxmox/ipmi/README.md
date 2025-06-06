@@ -24,14 +24,8 @@ A comprehensive bash-based IPMI fan control system for Supermicro X10-X13 series
 
 ### One-Line Installation
 
-**Option 1: Standard (recommended once GitHub is updated):**
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ipmi/install.sh)"
-```
-
-**Option 2: Fixed version (use if getting hddtemp error):**
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ipmi/install-fixed.sh)"
 ```
 
 This will:

@@ -130,12 +130,26 @@ load_existing_config() {
     print_color "$BLUE" "Debug: Checking if configuration file exists"
     if [[ -f "$config_file" ]]; then
         print_color "$GREEN" "✓ Configuration file found"
+
         # Extract existing values
+        EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+        EXISTING_ILO_USER=$(grep '^ILO_USER=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+        EXISTING_ILO_PASS=$(grep '^ILO_PASS=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "true")
         EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
         EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "30")
 
+        # Mask the password when displaying
+        MASKED_PASS="$(echo "$EXISTING_ILO_PASS" | sed 's/./*/g')"
+
         print_color "$GREEN" "✓ Loaded existing configuration values"
+        print_color "$CYAN" "  iLO Host: $EXISTING_ILO_HOST"
+        print_color "$CYAN" "  iLO User: $EXISTING_ILO_USER"
+        print_color "$CYAN" "  iLO Password: $MASKED_PASS"
+        print_color "$CYAN" "  Enable Dynamic Control: $EXISTING_ENABLE_DYNAMIC_CONTROL"
+        print_color "$CYAN" "  Log Level: $EXISTING_LOG_LEVEL"
+        print_color "$CYAN" "  Monitoring Interval: $EXISTING_MONITORING_INTERVAL"
+
         echo ""
         return 0
     else
@@ -347,11 +361,12 @@ download_and_install_files() {
 }
 
 # Function to create configuration file
+# Update the `create_configuration_file` function to place comments on separate lines
 create_configuration_file() {
     print_color "$BLUE" "Creating configuration file..."
-    
+
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
-    
+
     # Create configuration file with user settings
     $SUDO_CMD tee "$config_file" > /dev/null << EOF
 # iLO4 Fan Control Configuration File
@@ -359,54 +374,76 @@ create_configuration_file() {
 # Edit this file to customize your setup, then restart the service
 
 # === iLO CONNECTION SETTINGS ===
-ILO_HOST="$ILO_HOST"                    # iLO IP address or hostname
-ILO_USER="$ILO_USER"                    # iLO username
-ILO_PASS="$ILO_PASS"                    # iLO password
-USE_SSH_PASS=true                       # Set to false to use SSH key authentication
+# iLO IP address or hostname
+ILO_HOST="$ILO_HOST"
+
+# iLO username
+ILO_USER="$ILO_USER"
+
+# iLO password
+ILO_PASS="$ILO_PASS"
+
+# Set to false to use SSH key authentication
+USE_SSH_PASS=true
 
 # === FAN CONFIGURATION ===
-FAN_COUNT=$FAN_COUNT                    # Total number of fans (0 to FAN_COUNT-1)
-GLOBAL_MIN_SPEED=$GLOBAL_MIN_SPEED     # Minimum fan speed (0-255)
-PID_MIN_LOW=1600                       # PID minimum low value
-DISABLED_SENSORS=(07FB00 35 38)        # Sensor IDs to disable (space-separated)
+# Total number of fans (0 to FAN_COUNT-1)
+FAN_COUNT=$FAN_COUNT
+
+# Minimum fan speed (0-255)
+GLOBAL_MIN_SPEED=$GLOBAL_MIN_SPEED
+
+# PID minimum low value
+PID_MIN_LOW=1600
+
+# Sensor IDs to disable (space-separated)
+DISABLED_SENSORS=(07FB00 35 38)
 
 # === DYNAMIC CONTROL SETTINGS ===
-ENABLE_DYNAMIC_CONTROL=$ENABLE_DYNAMIC_CONTROL       # Enable temperature-based fan control
-MONITORING_INTERVAL=$MONITORING_INTERVAL            # Seconds between temperature checks
-CPU1_FANS=(3 4 5)                     # Fans controlled by CPU1 temperature
-CPU2_FANS=(0 1 2)                     # Fans controlled by CPU2 temperature
+# Enable temperature-based fan control
+ENABLE_DYNAMIC_CONTROL=$ENABLE_DYNAMIC_CONTROL
+
+# Seconds between temperature checks
+MONITORING_INTERVAL=$MONITORING_INTERVAL
+
+# Fans controlled by CPU1 temperature
+CPU1_FANS=(3 4 5)
+
+# Fans controlled by CPU2 temperature
+CPU2_FANS=(0 1 2)
 
 # === TEMPERATURE THRESHOLDS ===
-# Define custom temperature thresholds and corresponding fan speeds
-# The system uses TEMP_STEPS to define temperature breakpoints and
-# TEMP_THRESHOLD_XX variables to define fan speeds for each step.
-
-# Temperature steps (in Celsius) - these define the breakpoints
-# You can add/remove/modify these values to customize your cooling curve
-# Example: TEMP_STEPS=(95 85 75 65 55 45) for more granular control
-TEMP_STEPS=(90 80 70 60 50)           # Temperature breakpoints (highest to lowest)
+# Temperature breakpoints (highest to lowest)
+TEMP_STEPS=(90 80 70 60 50)
 
 # Fan speeds for each temperature step (0-255)
-# The system will use the highest applicable threshold based on current temperature
-# You can add custom steps using: sudo ./set-thresholds.sh --add-temp-step TEMP SPEED
-TEMP_THRESHOLD_90=255                 # Emergency cooling (90°C+)
-TEMP_THRESHOLD_80=200                 # High temperature (80-89°C)
-TEMP_THRESHOLD_70=150                 # Medium-high temperature (70-79°C)
-TEMP_THRESHOLD_60=100                 # Medium temperature (60-69°C)
-TEMP_THRESHOLD_50=75                  # Low-medium temperature (50-59°C)
-TEMP_THRESHOLD_DEFAULT=50             # Default/idle temperature (below lowest step)
+TEMP_THRESHOLD_90=255
+TEMP_THRESHOLD_80=200
+TEMP_THRESHOLD_70=150
+TEMP_THRESHOLD_60=100
+TEMP_THRESHOLD_50=75
+TEMP_THRESHOLD_DEFAULT=50
 
 # === SAFETY AND MONITORING ===
-MAX_TEMP_CPU=80                       # Maximum safe CPU temperature
-EMERGENCY_SPEED=255                   # Fan speed for emergency situations
-CONNECTION_TIMEOUT=30                 # SSH connection timeout in seconds
-COMMAND_RETRIES=3                     # Number of retries for failed commands
+# Maximum safe CPU temperature
+MAX_TEMP_CPU=80
+
+# Fan speed for emergency situations
+EMERGENCY_SPEED=255
+
+# SSH connection timeout in seconds
+CONNECTION_TIMEOUT=30
+
+# Number of retries for failed commands
+COMMAND_RETRIES=3
 
 # === LOGGING ===
-LOG_LEVEL="$LOG_LEVEL"                # Log level: DEBUG, INFO, WARN, ERROR
+# Log level: DEBUG, INFO, WARN, ERROR
+LOG_LEVEL="$LOG_LEVEL"
+
 LOG_FILE="/var/log/ilo4-fan-control.log"
 EOF
-    
+
     $SUDO_CMD chmod 600 "$config_file"
     print_color "$GREEN" "✓ Configuration file created"
     echo ""

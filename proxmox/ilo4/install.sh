@@ -144,7 +144,42 @@ load_existing_config() {
         echo ""
         return 0
     else
-        print_color "$BLUE" "No existing configuration found, using installer defaults"
+        print_color "$BLUE" "No existing configuration found, downloading template configuration..."
+        
+        # Create config directory if it doesn't exist
+        if [[ ! -d "$CONFIG_DIR" ]]; then
+            $SUDO_CMD mkdir -p "$CONFIG_DIR"
+        fi
+        
+        # Download template configuration file
+        if curl -fsSL "$CONFIG_URL" -o "/tmp/ilo4-fan-control.conf.template"; then
+            print_color "$GREEN" "✓ Downloaded template configuration"
+            
+            # Extract values from template for defaults
+            EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "<ip>")
+            EXISTING_ILO_USER=$(grep '^ILO_USER=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "<username>")
+            EXISTING_FAN_COUNT=$(grep '^FAN_COUNT=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "6")
+            EXISTING_GLOBAL_MIN_SPEED=$(grep '^GLOBAL_MIN_SPEED=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "60")
+            EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "true")
+            EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
+            EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "/tmp/ilo4-fan-control.conf.template" 2>/dev/null | cut -d'=' -f2 || echo "30")
+            
+            print_color "$GREEN" "✓ Loaded template configuration values as defaults"
+            
+            # Clean up template file
+            rm -f "/tmp/ilo4-fan-control.conf.template"
+        else
+            print_color "$YELLOW" "⚠ Could not download template configuration, using built-in defaults"
+            # Set empty defaults that will be handled by set_default_values()
+            EXISTING_ILO_HOST=""
+            EXISTING_ILO_USER=""
+            EXISTING_FAN_COUNT=""
+            EXISTING_GLOBAL_MIN_SPEED=""
+            EXISTING_ENABLE_DYNAMIC_CONTROL=""
+            EXISTING_LOG_LEVEL=""
+            EXISTING_MONITORING_INTERVAL=""
+        fi
+        
         echo ""
         return 1
     fi

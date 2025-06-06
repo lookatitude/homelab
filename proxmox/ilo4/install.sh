@@ -598,48 +598,74 @@ install_dependencies() {
     echo ""
 }
 
-# Add detailed error logging to identify the source of unexpected errors
-trap 'print_color "$RED" "An unexpected error occurred at line $LINENO. Exiting..."' ERR
+# Ensure cleanup of temporary files after downloading templates
+if [[ -f "/tmp/ilo4-fan-control.conf.template" ]]; then
+    rm -f "/tmp/ilo4-fan-control.conf.template"
+fi
+
+# Add detailed feedback for each step
+print_color "$BLUE" "Debug: Verifying template cleanup"
+if [[ ! -f "/tmp/ilo4-fan-control.conf.template" ]]; then
+    print_color "$GREEN" "✓ Temporary template file cleaned up successfully"
+else
+    print_color "$RED" "✗ Failed to clean up temporary template file"
+fi
+
+# Ensure error handling during remote execution
+trap 'print_color "$RED" "An unexpected error occurred at line $LINENO during step $STEP. Exiting..."' ERR
 set -o errtrace
 
-# Add debug messages to critical steps
-print_color "$BLUE" "Debug: Starting iLO4 Fan Control Installation..."
+# Add step tracking for debugging
+STEP="Starting Installation"
+print_color "$BLUE" "Debug: $STEP"
 
-print_color "$BLUE" "Debug: Step 1 - Detecting OS..."
+STEP="Detecting OS"
+print_color "$BLUE" "Debug: $STEP"
 detect_os
 
-print_color "$BLUE" "Debug: Step 2 - Checking prerequisites..."
+STEP="Checking prerequisites"
+print_color "$BLUE" "Debug: $STEP"
 check_prerequisites
 
-print_color "$BLUE" "Debug: Step 3 - Checking privileges..."
+STEP="Checking privileges"
+print_color "$BLUE" "Debug: $STEP"
 check_privileges
 
-print_color "$BLUE" "Debug: Step 4 - Installing dependencies..."
+STEP="Installing dependencies"
+print_color "$BLUE" "Debug: $STEP"
 install_dependencies
 
-print_color "$BLUE" "Debug: Step 5 - Loading existing configuration..."
+STEP="Loading existing configuration"
+print_color "$BLUE" "Debug: $STEP"
 load_existing_config
 set_default_values
 
-print_color "$BLUE" "Debug: Step 6 - Configuring settings..."
+STEP="Configuring settings"
+print_color "$BLUE" "Debug: $STEP"
 configure_settings
 
-print_color "$BLUE" "Debug: Step 7 - Creating directories..."
+STEP="Creating directories"
+print_color "$BLUE" "Debug: $STEP"
 create_directories
 
-print_color "$BLUE" "Debug: Step 8 - Downloading and installing files..."
+STEP="Downloading and installing files"
+print_color "$BLUE" "Debug: $STEP"
 download_and_install_files
 
-print_color "$BLUE" "Debug: Step 9 - Creating configuration file..."
+STEP="Creating configuration file"
+print_color "$BLUE" "Debug: $STEP"
 create_configuration_file
 
-print_color "$BLUE" "Debug: Step 10 - Testing configuration..."
+STEP="Testing configuration"
+print_color "$BLUE" "Debug: $STEP"
 test_configuration
 
-print_color "$BLUE" "Debug: Step 11 - Configuring systemd service..."
+STEP="Configuring systemd service"
+print_color "$BLUE" "Debug: $STEP"
 configure_service
 
-print_color "$BLUE" "Debug: Step 12 - Starting service..."
+STEP="Starting service"
+print_color "$BLUE" "Debug: $STEP"
 while true; do
     read -p "Would you like to start the iLO4 fan control service now? (y/n): " -n 1 -r
     echo ""
@@ -663,5 +689,6 @@ while true; do
     fi
 done
 
-print_color "$BLUE" "Debug: Step 13 - Showing completion message..."
+STEP="Showing completion message"
+print_color "$BLUE" "Debug: $STEP"
 show_completion_message

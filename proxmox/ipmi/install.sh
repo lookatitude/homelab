@@ -193,7 +193,7 @@ is_package_installed() {
 
 # List of required packages
 REQUIRED_PACKAGES=("ipmitool" "wget" "curl")
-OPTIONAL_PACKAGES=("lm-sensors" "smartmontools" "hddtemp")
+OPTIONAL_PACKAGES=("lm-sensors" "smartmontools")
 
 # Check and install required packages
 MISSING_PACKAGES=()
@@ -211,11 +211,9 @@ if [[ "$ENABLE_SENSORS" == "true" ]]; then
 fi
 
 if [[ "$ENABLE_HD_MONITORING" == "true" ]]; then
-    for package in "smartmontools" "hddtemp"; do
-        if ! is_package_installed "$package"; then
-            MISSING_PACKAGES+=("$package")
-        fi
-    done
+    if ! is_package_installed "smartmontools"; then
+        MISSING_PACKAGES+=("smartmontools")
+    fi
 fi
 
 if [[ ${#MISSING_PACKAGES[@]} -gt 0 ]]; then

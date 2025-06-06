@@ -307,25 +307,15 @@ get_hd_temperature() {
         fi
     done
     
-    # Get temperatures using smartctl or hddtemp
+    # Get temperatures using smartctl
     for device in "${hd_devices[@]}"; do
         local temp=""
         
-        # Try smartctl first
+        # Try smartctl for SMART temperature data
         if command -v smartctl >/dev/null 2>&1; then
             local smartctl_output
             if smartctl_output=$(smartctl -A "$device" 2>/dev/null); then
                 if [[ "$smartctl_output" =~ Temperature_Celsius.*[[:space:]]([0-9]+) ]]; then
-                    temp="${BASH_REMATCH[1]}"
-                fi
-            fi
-        fi
-        
-        # Try hddtemp if smartctl failed
-        if [[ -z "$temp" ]] && command -v hddtemp >/dev/null 2>&1; then
-            local hddtemp_output
-            if hddtemp_output=$(hddtemp "$device" 2>/dev/null); then
-                if [[ "$hddtemp_output" =~ :\ ([0-9]+)°C ]]; then
                     temp="${BASH_REMATCH[1]}"
                 fi
             fi

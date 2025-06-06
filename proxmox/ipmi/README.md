@@ -18,7 +18,7 @@ A comprehensive bash-based IPMI fan control system for Supermicro X10-X13 series
 
 - **Motherboards**: Supermicro X10, X11, X12, X13 series
 - **Operating Systems**: Linux (Debian/Ubuntu/Proxmox recommended)
-- **Requirements**: ipmitool, bash, bc, smartmontools (optional)
+- **Requirements**: ipmitool, bash, bc, smartmontools, lm-sensors
 
 ## Quick Start
 
@@ -78,7 +78,7 @@ If you prefer to install manually or need custom setup:
 1. **Install Dependencies**:
    ```bash
    sudo apt update
-   sudo apt install ipmitool bc smartmontools lm-sensors hddtemp
+   sudo apt install ipmitool bc smartmontools lm-sensors
    ```
 
 2. **Download Scripts**:
@@ -254,8 +254,8 @@ The system automatically detects and uses available temperature sources:
    - Fallback: 40°C
 
 2. **HDD Temperature**:
-   - `smartctl` SMART data (preferred)
-   - `hddtemp` utility
+   - `smartctl` SMART data (primary method)
+   - IPMI HDD temperature sensors (if available)
    - Fallback: 30°C
 
 ## Sensor Thresholds
@@ -303,6 +303,7 @@ Upper thresholds:  1600, 1700, 1800 RPM
    - Install `lm-sensors`: `sudo apt install lm-sensors && sudo sensors-detect`
    - Install `smartmontools`: `sudo apt install smartmontools`
    - Check sensor availability: `sensors` and `smartctl -A /dev/sda`
+   - Note: `hddtemp` is deprecated; use `smartctl` for HDD temperatures
 
 ### Debugging Commands
 

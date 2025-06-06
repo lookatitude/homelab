@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Repository configuration
-REPO_BASE_URL="https://raw.githubusercontent.com/lookatitude/homelab/master/proxmox/ilo4"
+REPO_BASE_URL="https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4"
 SCRIPT_URL="$REPO_BASE_URL/ilo4-fan-control.sh"
 SERVICE_URL="$REPO_BASE_URL/ilo4-fan-control.service"
 

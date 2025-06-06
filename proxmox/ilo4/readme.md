@@ -16,7 +16,7 @@ A comprehensive fan control solution for HP servers with iLO4 that automatically
 Run this one-liner to download and install everything automatically:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/master/proxmox/ilo4/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
 ```
 
 The installation script will:
@@ -42,11 +42,11 @@ sudo apt install -y sshpass openssh-client wget curl lm-sensors jq
 
 ```bash
 # Download the script
-sudo wget https://raw.githubusercontent.com/lookatitude/homelab/master/proxmox/ilo4/ilo4-fan-control.sh -O /usr/local/bin/ilo4-fan-control.sh
+sudo wget https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/ilo4-fan-control.sh -O /usr/local/bin/ilo4-fan-control.sh
 sudo chmod +x /usr/local/bin/ilo4-fan-control.sh
 
 # Download the service file
-sudo wget https://raw.githubusercontent.com/lookatitude/homelab/master/proxmox/ilo4/ilo4-fan-control.service -O /etc/systemd/system/ilo4-fan-control.service
+sudo wget https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/ilo4-fan-control.service -O /etc/systemd/system/ilo4-fan-control.service
 ```
 
 ### 3. Configure the Script

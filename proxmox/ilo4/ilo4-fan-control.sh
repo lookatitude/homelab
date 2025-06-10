@@ -460,59 +460,26 @@ initialize_fan_control() {
         sleep 5
     done
 
-    # Get PID information
-    local pids_raw
-    pids_raw=$(get_pid_info)
-
-    # Set minimum fan speeds
-    log_message "INFO" "Setting minimum fan speeds to $GLOBAL_MIN_SPEED..."
-    local fan_failures=0
-    local max_fan_failures=3
+    # Set default fan speeds
+    log_message "INFO" "Setting default fan speeds to $GLOBAL_MIN_SPEED..."
     for ((i=0; i < FAN_COUNT; i++)); do
         if ! execute_ilo_command "fan p $i min $GLOBAL_MIN_SPEED"; then
-            log_message "WARN" "Failed to set minimum speed for fan $i"
-            ((fan_failures++))
-            handle_repeated_failures "$fan_failures" "$max_fan_failures" "Failed to set minimum speed for fans."
+            log_message "WARN" "Failed to set default speed for fan $i"
         else
-            log_message "DEBUG" "Fan $i minimum speed set to $GLOBAL_MIN_SPEED"
+            log_message "DEBUG" "Fan $i default speed set to $GLOBAL_MIN_SPEED"
         fi
-        sleep 1  # Small delay between commands
+        sleep 1
     done
-
-    # Set PID minimums
-    if [[ -n "$pids_raw" ]]; then
-        log_message "INFO" "Setting PID minimums to $PID_MIN_LOW..."
-        local pid_failures=0
-        local max_pid_failures=3
-        while IFS= read -r pid; do
-            if [[ -n "$pid" ]]; then
-                if ! execute_ilo_command "fan pid $pid lo $PID_MIN_LOW"; then
-                    log_message "WARN" "Failed to set minimum for PID $pid"
-                    ((pid_failures++))
-                    handle_repeated_failures "$pid_failures" "$max_pid_failures" "Failed to set PID minimums."
-                else
-                    log_message "DEBUG" "PID $pid minimum set to $PID_MIN_LOW"
-                fi
-                sleep 1
-            fi
-        done <<< "$pids_raw"
-    else
-        log_message "WARN" "No PIDs found, skipping PID configuration"
-    fi
 
     # Disable specified sensors
     if [[ ${#DISABLED_SENSORS[@]} -gt 0 ]]; then
         log_message "INFO" "Disabling sensors: ${DISABLED_SENSORS[*]}"
-        local sensor_failures=0
-        local max_sensor_failures=3
         for sensor in "${DISABLED_SENSORS[@]}"; do
             log_message "DEBUG" "Executing command to disable sensor $sensor: fan t $sensor off"
             if output=$(execute_ilo_command "fan t $sensor off"); then
                 log_message "DEBUG" "Sensor $sensor disabled successfully. Command output: $output"
             else
                 log_message "WARN" "Failed to disable sensor $sensor. Command output: $output"
-                ((sensor_failures++))
-                handle_repeated_failures "$sensor_failures" "$max_sensor_failures" "Failed to disable sensors."
             fi
             sleep 1
         done

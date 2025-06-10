@@ -660,6 +660,34 @@ log_message() {
     echo "[$timestamp] [$level] $message"
 }
 
+# Function to update scripts
+update_scripts() {
+    log_message "INFO" "Fetching latest scripts from repository..."
+
+    # Download and replace main script
+    if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
+        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
+        log_message "INFO" "Main script updated successfully"
+    else
+        log_message "ERROR" "Failed to update main script"
+        exit 1
+    fi
+
+    # Download and replace service file
+    if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        log_message "INFO" "Service file updated successfully"
+    else
+        log_message "ERROR" "Failed to update service file"
+        exit 1
+    fi
+
+    # Restart the service
+    $SUDO_CMD systemctl restart ilo4-fan-control.service
+    log_message "INFO" "Service restarted successfully"
+}
+
 # Ensure $1 is set to avoid unbound variable error
 if [[ -z "${1:-}" ]]; then
     set -- "install"

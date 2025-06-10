@@ -200,48 +200,30 @@ load_existing_config() {
         print_color "$GREEN" "✓ Configuration file found"
 
         # Extract existing values
-        EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-        EXISTING_ILO_USER=$(grep '^ILO_USER=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-        EXISTING_ILO_PASS=$(grep '^ILO_PASS=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-        EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "true")
-        EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "INFO")
-        EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "$config_file" 2>/dev/null | cut -d'=' -f2 || echo "30")
+        EXISTING_ILO_HOST=$(grep '^ILO_HOST=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_ILO_USER=$(grep '^ILO_USER=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_ILO_PASS=$(grep '^ILO_PASS=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_ENABLE_DYNAMIC_CONTROL=$(grep '^ENABLE_DYNAMIC_CONTROL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_LOG_LEVEL=$(grep '^LOG_LEVEL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_MONITORING_INTERVAL=$(grep '^MONITORING_INTERVAL=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_FAN_COUNT=$(grep '^FAN_COUNT=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+        EXISTING_GLOBAL_MIN_SPEED=$(grep '^GLOBAL_MIN_SPEED=' "$config_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"')
 
-        # Mask the password when displaying
-        MASKED_PASS="$(echo "$EXISTING_ILO_PASS" | sed 's/./*/g')"
-
-        print_color "$GREEN" "✓ Loaded existing configuration values"
+        # Debugging: Print loaded values
+        print_color "$CYAN" "Debug: Loaded values from configuration file"
         print_color "$CYAN" "  iLO Host: $EXISTING_ILO_HOST"
         print_color "$CYAN" "  iLO User: $EXISTING_ILO_USER"
-        print_color "$CYAN" "  iLO Password: $MASKED_PASS"
+        print_color "$CYAN" "  iLO Password: [hidden]"
         print_color "$CYAN" "  Enable Dynamic Control: $EXISTING_ENABLE_DYNAMIC_CONTROL"
         print_color "$CYAN" "  Log Level: $EXISTING_LOG_LEVEL"
         print_color "$CYAN" "  Monitoring Interval: $EXISTING_MONITORING_INTERVAL"
+        print_color "$CYAN" "  Fan Count: $EXISTING_FAN_COUNT"
+        print_color "$CYAN" "  Global Min Speed: $EXISTING_GLOBAL_MIN_SPEED"
 
-        echo ""
         return 0
     else
-        print_color "$BLUE" "No existing configuration found, downloading template configuration..."
-
-        # Create config directory if it doesn't exist
-        if [[ ! -d "/etc/ilo4-fan-control" ]]; then
-            print_color "$BLUE" "Debug: Creating configuration directory"
-            $SUDO_CMD mkdir -p "/etc/ilo4-fan-control"
-        fi
-
-        # Download template configuration file
-        print_color "$BLUE" "Debug: Downloading template configuration file"
-        if curl -fsSL "$CONFIG_URL" -o "/tmp/ilo4-fan-control.conf.template"; then
-            print_color "$GREEN" "✓ Downloaded template configuration"
-            $SUDO_CMD mv "/tmp/ilo4-fan-control.conf.template" "$config_file"
-            $SUDO_CMD chmod 600 "$config_file"
-        else
-            print_color "$RED" "✗ Failed to download template configuration"
-            return 1
-        fi
-
-        echo ""
-        return 0
+        print_color "$RED" "✗ Configuration file not found"
+        return 1
     fi
 }
 
@@ -250,7 +232,7 @@ load_existing_config() {
 set_default_values() {
     # Set defaults (use existing values if available, otherwise use installer defaults)
     DEFAULT_ILO_HOST="${EXISTING_ILO_HOST:-<ip>}"
-    DEFAULT_ILO_USER="${EXISTING_ILO_USER:-<username>}"
+    ILO_HOST="${DEFAULT_ILO_HOST}" # Initialize ILO_HOST with a default value
     DEFAULT_FAN_COUNT="${EXISTING_FAN_COUNT:-6}"
     DEFAULT_GLOBAL_MIN_SPEED="${EXISTING_GLOBAL_MIN_SPEED:-60}"
     DEFAULT_ENABLE_DYNAMIC_CONTROL="${EXISTING_ENABLE_DYNAMIC_CONTROL:-true}"
@@ -737,6 +719,23 @@ run_update() {
     initialize_directories
     initialize_files
     initialize_service
+
+    # Ensure configuration values are loaded
+    if ! load_existing_config; then
+        print_color "$RED" "✗ Failed to load configuration file. Update cannot proceed."
+        exit 1
+    fi
+
+    # Apply loaded values to variables
+    ILO_HOST="$EXISTING_ILO_HOST"
+    ILO_USER="$EXISTING_ILO_USER"
+    ILO_PASS="$EXISTING_ILO_PASS"
+    ENABLE_DYNAMIC_CONTROL="$EXISTING_ENABLE_DYNAMIC_CONTROL"
+    LOG_LEVEL="$EXISTING_LOG_LEVEL"
+    MONITORING_INTERVAL="$EXISTING_MONITORING_INTERVAL"
+    FAN_COUNT="$EXISTING_FAN_COUNT"
+    GLOBAL_MIN_SPEED="$EXISTING_GLOBAL_MIN_SPEED"
+
     print_color "$GREEN" "Update completed successfully!"
 }
 

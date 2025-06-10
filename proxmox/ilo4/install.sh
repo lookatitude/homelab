@@ -688,25 +688,52 @@ update_scripts() {
     log_message "INFO" "Service restarted successfully"
 }
 
-# Ensure $1 is set to avoid unbound variable error
-if [[ -z "${1:-}" ]]; then
-    set -- "install"
-fi
+# Main execution logic
+main() {
+    show_header
+    detect_os
+    check_prerequisites
+    check_privileges
 
-# Check for update flag
-if [[ "$1" == "update" ]]; then
-    log_message "INFO" "Updating scripts..."
-    update_scripts
-    exit 0
-fi
+    # Parse arguments
+    local mode="install" # Default mode
+    if [[ $# -gt 0 ]]; then
+        mode="$1"
+    fi
 
-# Default to full installation process if no parameter is passed
-if [[ "$1" == "install" ]]; then
-    log_message "INFO" "Starting full installation process..."
-    # Call the full installation logic here
-    # ...existing installation logic...
-    exit 0
-fi
+    case "$mode" in
+        install)
+            print_color "$BLUE" "Starting full installation..."
+            load_existing_config || exit 1
+            set_default_values
+            configure_settings
+            create_directories
+            download_and_install_files
+            create_configuration_file
+            test_configuration
+            configure_service
+            show_completion_message
+            ;;
+        update)
+            print_color "$BLUE" "Starting update process..."
+            if ! load_existing_config; then
+                print_color "$RED" "✗ Configuration file not found. Please run the full installation first."
+                exit 1
+            fi
+            download_and_install_files
+            configure_service
+            print_color "$GREEN" "✓ Update process completed successfully"
+            ;;
+        *)
+            print_color "$RED" "✗ Invalid mode: $mode"
+            print_color "$YELLOW" "Usage: $0 [install|update]"
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function
+main "$@"
 
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)

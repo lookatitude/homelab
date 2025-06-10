@@ -732,9 +732,6 @@ main() {
     esac
 }
 
-# Execute main function
-main "$@"
-
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)
 exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)

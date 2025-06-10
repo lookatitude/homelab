@@ -813,3 +813,46 @@ set -o errtrace
 if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then
     main "$@"
 fi
+
+# Ensure all required dependencies are installed
+install_dependencies() {
+    local deps=(ssh timeout ping grep awk sort tr head sleep)
+    if [[ "$ENABLE_DYNAMIC_CONTROL" == "true" ]]; then
+        deps+=(sensors)
+    fi
+    local missing=()
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing+=("$dep")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        print_color "$YELLOW" "Installing missing dependencies: ${missing[*]}"
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y "${missing[@]}"
+        elif command -v yum &>/dev/null; then
+            sudo yum install -y "${missing[@]}"
+        else
+            print_color "$RED" "No supported package manager found. Please install: ${missing[*]} manually."
+            exit 1
+        fi
+    else
+        print_color "$GREEN" "All required dependencies are already installed."
+    fi
+}
+
+# Stop all running instances of the service before update/install
+restart_service_clean() {
+    local svc_name="ilo4-fan-control"
+    if systemctl list-units --type=service | grep -q "$svc_name"; then
+        print_color "$YELLOW" "Stopping all running instances of $svc_name.service..."
+        sudo systemctl stop "$svc_name.service"
+        sleep 2
+        print_color "$YELLOW" "Ensuring no lingering processes..."
+        sudo pkill -f ilo4-fan-control.sh || true
+    fi
+    print_color "$YELLOW" "Starting $svc_name.service..."
+    sudo systemctl start "$svc_name.service"
+    sudo systemctl enable "$svc_name.service"
+}

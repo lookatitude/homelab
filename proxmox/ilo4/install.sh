@@ -755,6 +755,12 @@ main() {
     check_prerequisites
     check_privileges
 
+    # Handle cases where $1 is not set
+    if [[ -z "$1" ]]; then
+        print_color "$RED" "No argument provided. Use 'install' or 'update'."
+        exit 1
+    fi
+
     case "$1" in
         install)
             run_full_installation

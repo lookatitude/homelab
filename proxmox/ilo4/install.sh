@@ -123,6 +123,74 @@ check_privileges() {
     echo ""
 }
 
+# Ensure all commands dynamically avoid using sudo when running as root
+create_directories() {
+    print_color "$BLUE" "Step 3: Creating directories..."
+
+    if ! $SUDO_CMD mkdir -p "$CONFIG_DIR"; then
+        print_color "$RED" "✗ Failed to create configuration directory: $CONFIG_DIR"
+        exit 1
+    fi
+
+    if ! $SUDO_CMD mkdir -p "$LOG_DIR"; then
+        print_color "$RED" "✗ Failed to create log directory: $LOG_DIR"
+        exit 1
+    fi
+
+    print_color "$GREEN" "✓ Directories created"
+    echo ""
+}
+
+# Function to download and install files
+# Update all commands to dynamically avoid using sudo when running as root
+download_and_install_files() {
+    print_color "$BLUE" "Step 4: Downloading and installing files..."
+    
+    # Download main script
+    print_color "$YELLOW" "Downloading main script..."
+    if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
+        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
+        print_color "$GREEN" "✓ Main script installed"
+    else
+        print_color "$RED" "✗ Failed to download main script"
+        exit 1
+    fi
+    
+    # Download service file
+    print_color "$YELLOW" "Downloading service file..."
+    if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        print_color "$GREEN" "✓ Service file installed"
+    else
+        print_color "$RED" "✗ Failed to download service file"
+        exit 1
+    fi
+    
+    # Download manual control script (optional)
+    print_color "$YELLOW" "Downloading manual control script..."
+    if curl -fsSL "$MANUAL_SCRIPT_URL" -o "/tmp/ilo4-fan-control-manual.sh"; then
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control-manual.sh" "$INSTALL_DIR/ilo4-fan-control-manual.sh"
+        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control-manual.sh"
+        print_color "$GREEN" "✓ Manual control script installed"
+    else
+        print_color "$YELLOW" "⚠ Manual control script not available (optional)"
+    fi
+    
+    # Download threshold management script (optional)
+    print_color "$YELLOW" "Downloading threshold management script..."
+    if curl -fsSL "$THRESHOLDS_SCRIPT_URL" -o "/tmp/set-thresholds.sh"; then
+        $SUDO_CMD mv -f "/tmp/set-thresholds.sh" "$INSTALL_DIR/set-thresholds.sh"
+        $SUDO_CMD chmod +x "$INSTALL_DIR/set-thresholds.sh"
+        print_color "$GREEN" "✓ Threshold management script installed"
+    else
+        print_color "$YELLOW" "⚠ Threshold management script not available (optional)"
+    fi
+    
+    print_color "$GREEN" "✓ All files downloaded and installed successfully"
+    echo ""
+}
+
 # Ensure the configuration file path is consistently checked
 load_existing_config() {
     local config_file="/etc/ilo4-fan-control/ilo4-fan-control.conf"
@@ -301,66 +369,6 @@ configure_settings() {
     echo ""
 }
 
-# Function to create directories
-create_directories() {
-    print_color "$BLUE" "Step 3: Creating directories..."
-    
-    $SUDO_CMD mkdir -p "$CONFIG_DIR"
-    $SUDO_CMD mkdir -p "$LOG_DIR"
-    
-    print_color "$GREEN" "✓ Directories created"
-    echo ""
-}
-
-# Function to download and install files
-download_and_install_files() {
-    print_color "$BLUE" "Step 4: Downloading and installing files..."
-    
-    # Download main script
-    print_color "$YELLOW" "Downloading main script..."
-    if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
-        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
-        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
-        print_color "$GREEN" "✓ Main script installed"
-    else
-        print_color "$RED" "✗ Failed to download main script"
-        exit 1
-    fi
-    
-    # Download service file
-    print_color "$YELLOW" "Downloading service file..."
-    if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
-        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
-        print_color "$GREEN" "✓ Service file installed"
-    else
-        print_color "$RED" "✗ Failed to download service file"
-        exit 1
-    fi
-    
-    # Download manual control script (optional)
-    print_color "$YELLOW" "Downloading manual control script..."
-    if curl -fsSL "$MANUAL_SCRIPT_URL" -o "/tmp/ilo4-fan-control-manual.sh"; then
-        $SUDO_CMD mv -f "/tmp/ilo4-fan-control-manual.sh" "$INSTALL_DIR/ilo4-fan-control-manual.sh"
-        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control-manual.sh"
-        print_color "$GREEN" "✓ Manual control script installed"
-    else
-        print_color "$YELLOW" "⚠ Manual control script not available (optional)"
-    fi
-    
-    # Download threshold management script (optional)
-    print_color "$YELLOW" "Downloading threshold management script..."
-    if curl -fsSL "$THRESHOLDS_SCRIPT_URL" -o "/tmp/set-thresholds.sh"; then
-        $SUDO_CMD mv -f "/tmp/set-thresholds.sh" "$INSTALL_DIR/set-thresholds.sh"
-        $SUDO_CMD chmod +x "$INSTALL_DIR/set-thresholds.sh"
-        print_color "$GREEN" "✓ Threshold management script installed"
-    else
-        print_color "$YELLOW" "⚠ Threshold management script not available (optional)"
-    fi
-    
-    print_color "$GREEN" "✓ All files downloaded and installed successfully"
-    echo ""
-}
-
 # Function to create configuration file
 # Update the `create_configuration_file` function to place comments on separate lines
 create_configuration_file() {
@@ -369,7 +377,7 @@ create_configuration_file() {
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
 
     # Create configuration file with user settings
-    $SUDO_CMD tee "$config_file" > /dev/null << EOF
+    cat << EOF | sudo tee "$config_file" > /dev/null
 # iLO4 Fan Control Configuration File
 # This file contains the configuration for the iLO4 fan control system
 # Edit this file to customize your setup, then restart the service
@@ -445,7 +453,7 @@ LOG_LEVEL="$LOG_LEVEL"
 LOG_FILE="/var/log/ilo4-fan-control.log"
 EOF
 
-    $SUDO_CMD chmod 600 "$config_file"
+    chmod 600 "$config_file"
     print_color "$GREEN" "✓ Configuration file created"
     echo ""
 }
@@ -463,7 +471,7 @@ test_configuration() {
         
         # Test script execution
         print_color "$YELLOW" "Running configuration test..."
-        if $SUDO_CMD timeout 60 "$INSTALL_DIR/ilo4-fan-control.sh" --test-mode &>/dev/null; then
+        if sudo timeout 60 "$INSTALL_DIR/ilo4-fan-control.sh" --test-mode &>/dev/null; then
             print_color "$GREEN" "✓ Script configuration test completed successfully"
         else
             print_color "$YELLOW" "⚠ Script test had issues, but installation completed"
@@ -482,10 +490,10 @@ configure_service() {
     print_color "$BLUE" "Step 6: Configuring systemd service..."
     
     # Reload systemd
-    $SUDO_CMD systemctl daemon-reload
+    sudo systemctl daemon-reload
     
     # Enable the service
-    $SUDO_CMD systemctl enable ilo4-fan-control.service
+    sudo systemctl enable ilo4-fan-control.service
     
     print_color "$GREEN" "✓ Service configured and enabled"
     echo ""
@@ -620,12 +628,12 @@ install_dependencies() {
         print_color "$YELLOW" "Installing missing packages: ${packages_to_install[*]}"
         
         if command -v apt-get &> /dev/null; then
-            $SUDO_CMD apt-get update
-            $SUDO_CMD apt-get install -y "${packages_to_install[@]}"
+            sudo apt-get update
+            sudo apt-get install -y "${packages_to_install[@]}"
         elif command -v yum &> /dev/null; then
-            $SUDO_CMD yum install -y "${packages_to_install[@]}"
+            sudo yum install -y "${packages_to_install[@]}"
         elif command -v dnf &> /dev/null; then
-            $SUDO_CMD dnf install -y "${packages_to_install[@]}"
+            sudo dnf install -y "${packages_to_install[@]}"
         else
             print_color "$RED" "✗ Cannot install packages automatically on this system"
             print_color "$YELLOW" "Please install these packages manually: ${packages_to_install[*]}"
@@ -666,8 +674,12 @@ update_scripts() {
 
     # Download and replace main script
     if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
-        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
-        $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
+        if [[ $EUID -eq 0 ]]; then
+            mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
+        else
+            sudo mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
+        fi
+        chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
         log_message "INFO" "Main script updated successfully"
     else
         log_message "ERROR" "Failed to update main script"
@@ -676,7 +688,11 @@ update_scripts() {
 
     # Download and replace service file
     if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
-        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        if [[ $EUID -eq 0 ]]; then
+            mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        else
+            sudo mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        fi
         log_message "INFO" "Service file updated successfully"
     else
         log_message "ERROR" "Failed to update service file"
@@ -684,53 +700,78 @@ update_scripts() {
     fi
 
     # Restart the service
-    $SUDO_CMD systemctl restart ilo4-fan-control.service
+    sudo systemctl restart ilo4-fan-control.service
     log_message "INFO" "Service restarted successfully"
 }
 
-# Main execution logic
+# Encapsulate features into functions
+initialize_directories() {
+    print_color "$BLUE" "Initializing directories..."
+    create_directories
+}
+
+initialize_files() {
+    print_color "$BLUE" "Initializing files..."
+    download_and_install_files
+}
+
+initialize_configuration() {
+    print_color "$BLUE" "Initializing configuration..."
+    load_existing_config || configure_settings
+    create_configuration_file
+}
+
+initialize_service() {
+    print_color "$BLUE" "Initializing service..."
+    configure_service
+}
+
+initialize_dependencies() {
+    print_color "$BLUE" "Checking and installing dependencies..."
+    install_dependencies
+}
+
+run_full_installation() {
+    print_color "$CYAN" "Starting full installation..."
+    initialize_directories
+    initialize_files
+    initialize_configuration
+    initialize_service
+    print_color "$GREEN" "Full installation completed successfully!"
+}
+
+run_update() {
+    print_color "$CYAN" "Starting update process..."
+    initialize_directories
+    initialize_files
+    initialize_service
+    print_color "$GREEN" "Update completed successfully!"
+}
+
+# Main script execution
 main() {
     show_header
     detect_os
     check_prerequisites
     check_privileges
 
-    # Parse arguments
-    local mode="install" # Default mode
-    if [[ $# -gt 0 ]]; then
-        mode="$1"
-    fi
-
-    case "$mode" in
+    case "$1" in
         install)
-            print_color "$BLUE" "Starting full installation..."
-            load_existing_config || exit 1
-            set_default_values
-            configure_settings
-            create_directories
-            download_and_install_files
-            create_configuration_file
-            test_configuration
-            configure_service
-            show_completion_message
+            run_full_installation
             ;;
         update)
-            print_color "$BLUE" "Starting update process..."
-            if ! load_existing_config; then
-                print_color "$RED" "✗ Configuration file not found. Please run the full installation first."
-                exit 1
-            fi
-            download_and_install_files
-            configure_service
-            print_color "$GREEN" "✓ Update process completed successfully"
+            run_update
             ;;
         *)
-            print_color "$RED" "✗ Invalid mode: $mode"
-            print_color "$YELLOW" "Usage: $0 [install|update]"
+            print_color "$RED" "Invalid argument. Use 'install' or 'update'."
             exit 1
             ;;
     esac
+
+    show_completion_message
 }
+
+main "$@"
 
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)
@@ -815,11 +856,11 @@ while true; do
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_color "$YELLOW" "Starting iLO4 fan control service..."
-        if $SUDO_CMD systemctl start ilo4-fan-control.service; then
+        if sudo systemctl start ilo4-fan-control.service; then
             print_color "$GREEN" "✓ Service started successfully"
             sleep 2
             print_color "$BLUE" "Service status:"
-            $SUDO_CMD systemctl status ilo4-fan-control.service --no-pager -l
+            sudo systemctl status ilo4-fan-control.service --no-pager -l
         else
             print_color "$YELLOW" "⚠ Service failed to start, check logs for details"
             print_color "$YELLOW" "You can start it manually later with: ${SUDO_CMD} systemctl start ilo4-fan-control"

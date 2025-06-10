@@ -319,7 +319,7 @@ download_and_install_files() {
     # Download main script
     print_color "$YELLOW" "Downloading main script..."
     if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
-        $SUDO_CMD mv "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
         $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
         print_color "$GREEN" "✓ Main script installed"
     else
@@ -330,7 +330,7 @@ download_and_install_files() {
     # Download service file
     print_color "$YELLOW" "Downloading service file..."
     if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
-        $SUDO_CMD mv "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
         print_color "$GREEN" "✓ Service file installed"
     else
         print_color "$RED" "✗ Failed to download service file"
@@ -340,7 +340,7 @@ download_and_install_files() {
     # Download manual control script (optional)
     print_color "$YELLOW" "Downloading manual control script..."
     if curl -fsSL "$MANUAL_SCRIPT_URL" -o "/tmp/ilo4-fan-control-manual.sh"; then
-        $SUDO_CMD mv "/tmp/ilo4-fan-control-manual.sh" "$INSTALL_DIR/ilo4-fan-control-manual.sh"
+        $SUDO_CMD mv -f "/tmp/ilo4-fan-control-manual.sh" "$INSTALL_DIR/ilo4-fan-control-manual.sh"
         $SUDO_CMD chmod +x "$INSTALL_DIR/ilo4-fan-control-manual.sh"
         print_color "$GREEN" "✓ Manual control script installed"
     else
@@ -350,13 +350,14 @@ download_and_install_files() {
     # Download threshold management script (optional)
     print_color "$YELLOW" "Downloading threshold management script..."
     if curl -fsSL "$THRESHOLDS_SCRIPT_URL" -o "/tmp/set-thresholds.sh"; then
-        $SUDO_CMD mv "/tmp/set-thresholds.sh" "$INSTALL_DIR/set-thresholds.sh"
+        $SUDO_CMD mv -f "/tmp/set-thresholds.sh" "$INSTALL_DIR/set-thresholds.sh"
         $SUDO_CMD chmod +x "$INSTALL_DIR/set-thresholds.sh"
         print_color "$GREEN" "✓ Threshold management script installed"
     else
         print_color "$YELLOW" "⚠ Threshold management script not available (optional)"
     fi
     
+    print_color "$GREEN" "✓ All files downloaded and installed successfully"
     echo ""
 }
 

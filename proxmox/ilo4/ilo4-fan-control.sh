@@ -665,8 +665,8 @@ monitor_and_control_fans() {
         
         # Get CPU temperatures
         local cpu1_temp cpu2_temp
-        cpu1_temp=$(get_cpu_temp 0)
-        cpu2_temp=$(get_cpu_temp 1)
+        cpu1_temp=$(get_cpu_temp 0) || { log_message "ERROR" "get_cpu_temp 0 failed"; cpu1_temp=0; }
+        cpu2_temp=$(get_cpu_temp 1) || { log_message "ERROR" "get_cpu_temp 1 failed"; cpu2_temp=0; }
         
         # Validate temperatures
         if [[ $cpu1_temp -eq 0 && $cpu2_temp -eq 0 ]]; then
@@ -704,16 +704,15 @@ monitor_and_control_fans() {
         
         # Determine fan speeds based on temperatures
         local cpu1_speed cpu2_speed
-        cpu1_speed=$(get_fan_speed_for_temp "$cpu1_temp")
-        cpu2_speed=$(get_fan_speed_for_temp "$cpu2_temp")
+        cpu1_speed=$(get_fan_speed_for_temp "$cpu1_temp") || { log_message "ERROR" "get_fan_speed_for_temp for CPU1 failed"; cpu1_speed=$GLOBAL_MIN_SPEED; }
+        cpu2_speed=$(get_fan_speed_for_temp "$cpu2_temp") || { log_message "ERROR" "get_fan_speed_for_temp for CPU2 failed"; cpu2_speed=$GLOBAL_MIN_SPEED; }
         
         # Set fan speeds for each CPU
         if ! set_cpu_fan_speeds 1 "$cpu1_temp" "$cpu1_speed"; then
-            log_message "WARN" "Issues setting CPU1 fan speeds"
+            log_message "ERROR" "set_cpu_fan_speeds 1 failed"
         fi
-        
         if ! set_cpu_fan_speeds 2 "$cpu2_temp" "$cpu2_speed"; then
-            log_message "WARN" "Issues setting CPU2 fan speeds"
+            log_message "ERROR" "set_cpu_fan_speeds 2 failed"
         fi
         
         log_message "INFO" "Fan control cycle $cycle_count completed. Sleeping for ${MONITORING_INTERVAL}s..."
@@ -739,18 +738,46 @@ cleanup() {
 # Set up signal traps
 trap cleanup SIGTERM SIGINT
 
+# Dependency check function
+check_dependencies() {
+    local missing=()
+    local required=("ssh" "timeout" "ping" "grep" "awk" "sort" "tr" "head" "sleep")
+    if [[ "$ENABLE_DYNAMIC_CONTROL" == "true" ]]; then
+        required+=("sensors")
+    fi
+    for cmd in "${required[@]}"; do
+        if ! command -v "$cmd" &>/dev/null; then
+            missing+=("$cmd")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        log_message "ERROR" "Missing required dependencies: ${missing[*]}"
+        log_message "ERROR" "Please install the missing commands and restart the service."
+        exit 1
+    fi
+}
+
 # Main execution flow
 main() {
+    check_dependencies
     # Initialize the fan control system
     if ! initialize_fan_control; then
         log_message "ERROR" "Fan control initialization failed"
         exit 1
     fi
-    
     # Start dynamic fan control if enabled
     if [[ "$ENABLE_DYNAMIC_CONTROL" == "true" ]]; then
         log_message "INFO" "Dynamic fan control is enabled. Starting monitoring..."
-        monitor_and_control_fans
+        (
+            trap 'log_message "ERROR" "Unexpected error or exit in monitoring loop (cycle $cycle_count). Service will attempt to continue."' ERR
+            monitor_and_control_fans
+        )
+        local monitor_status=$?
+        if [[ $monitor_status -ne 0 ]]; then
+            log_message "ERROR" "Monitoring loop exited unexpectedly with status $monitor_status. Restarting loop..."
+            sleep 5
+            exec "$0" "$@"
+        fi
     else
         log_message "INFO" "Dynamic fan control is disabled. Initial setup complete."
         log_message "INFO" "To enable dynamic control, set ENABLE_DYNAMIC_CONTROL=true in configuration"

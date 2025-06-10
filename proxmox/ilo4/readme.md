@@ -589,3 +589,58 @@ If you encounter issues, verify the following:
 - Proper permissions for the log directory.
 
 For further assistance, consult the detailed logs or contact support.
+
+## Installation
+
+To install the iLO4 fan control system interactively:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh | bash -s install
+```
+
+This will guide you through configuration and install all required files and services.
+
+## Update
+
+To update the iLO4 fan control system non-interactively (using your existing config):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh | bash -s update
+```
+
+- The update command will **not prompt for any input** and will use values from `/etc/ilo4-fan-control/ilo4-fan-control.conf`.
+- If any required config field is missing, the update will abort with an error.
+
+## Troubleshooting
+
+- If you see an error about `BASH_SOURCE` or unbound variables, ensure you are using the latest version of the script (as above).
+- The script logs to `/var/log/ilo4-fan-control.log`.
+
+## Service Management
+
+After installation, you can manage the service with:
+
+```bash
+sudo systemctl start ilo4-fan-control
+sudo systemctl stop ilo4-fan-control
+sudo systemctl status ilo4-fan-control
+sudo journalctl -u ilo4-fan-control -f
+```
+
+## Configuration
+
+Edit your configuration at:
+
+```
+sudo nano /etc/ilo4-fan-control/ilo4-fan-control.conf
+```
+
+Then restart the service:
+
+```
+sudo systemctl restart ilo4-fan-control
+```
+
+---
+
+For more details, see comments in the configuration file or the main script.

@@ -157,18 +157,20 @@ validate_config() {
 # Function to set up logging
 setup_logging() {
     # Create log directory if it doesn't exist
-    local log_dir="$(dirname "$LOG_FILE")"
+    local log_dir="$(dirname \"$LOG_FILE\")"
     if [[ ! -d "$log_dir" ]]; then
         mkdir -p "$log_dir" || {
             echo "ERROR: Cannot create log directory: $log_dir"
             exit 1
         }
     fi
-    
+
     # Set up log rotation if logrotate is available
     if command -v logrotate &>/dev/null; then
         local logrotate_config="/etc/logrotate.d/ilo4-fan-control"
-        if [[ ! -f "$logrotate_config" ]]; then
+        if [[ ! -w "/etc/logrotate.d" ]]; then
+            log_message "WARN" "Cannot write to /etc/logrotate.d. Skipping logrotate configuration."
+        elif [[ ! -f "$logrotate_config" ]]; then
             cat > "$logrotate_config" << EOF
 $LOG_FILE {
     daily
@@ -183,7 +185,7 @@ $LOG_FILE {
 EOF
         fi
     fi
-    
+
     # Redirect output to log file
     exec 1> >(tee -a "$LOG_FILE")
     exec 2> >(tee -a "$LOG_FILE" >&2)

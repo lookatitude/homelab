@@ -232,7 +232,7 @@ load_existing_config() {
 set_default_values() {
     # Set defaults (use existing values if available, otherwise use installer defaults)
     DEFAULT_ILO_HOST="${EXISTING_ILO_HOST:-<ip>}"
-    ILO_HOST="${DEFAULT_ILO_HOST}" # Initialize ILO_HOST with a default value
+    DEFAULT_ILO_USER="${EXISTING_ILO_USER:-<username>}"
     DEFAULT_FAN_COUNT="${EXISTING_FAN_COUNT:-6}"
     DEFAULT_GLOBAL_MIN_SPEED="${EXISTING_GLOBAL_MIN_SPEED:-60}"
     DEFAULT_ENABLE_DYNAMIC_CONTROL="${EXISTING_ENABLE_DYNAMIC_CONTROL:-true}"
@@ -487,7 +487,6 @@ show_completion_message() {
     print_color "$GREEN" "Installation Complete!"
     print_color "$GREEN" "=========================================="
     echo ""
-    
     print_color "$CYAN" "Installed Files:"
     print_color "$BLUE" "  Main script: $INSTALL_DIR/ilo4-fan-control.sh"
     print_color "$BLUE" "  Configuration: $CONFIG_DIR/ilo4-fan-control.conf"
@@ -500,10 +499,11 @@ show_completion_message() {
     fi
     print_color "$BLUE" "  Log file: $LOG_DIR/ilo4-fan-control.log"
     echo ""
-    
     print_color "$CYAN" "Configuration Applied:"
+    MASKED_PASS="$(echo "$ILO_PASS" | sed 's/./*/g')"
     print_color "$GREEN" "  iLO Host: $ILO_HOST"
     print_color "$GREEN" "  iLO User: $ILO_USER"
+    print_color "$GREEN" "  iLO Password: $MASKED_PASS"
     print_color "$GREEN" "  Fan Count: $FAN_COUNT"
     print_color "$GREEN" "  Min Speed: $GLOBAL_MIN_SPEED"
     print_color "$GREEN" "  Dynamic Control: $ENABLE_DYNAMIC_CONTROL"
@@ -736,6 +736,22 @@ run_update() {
     FAN_COUNT="$EXISTING_FAN_COUNT"
     GLOBAL_MIN_SPEED="$EXISTING_GLOBAL_MIN_SPEED"
 
+    # Check for missing required fields
+    local missing_vars=()
+    [[ -z "$ILO_HOST" ]] && missing_vars+=("ILO_HOST")
+    [[ -z "$ILO_USER" ]] && missing_vars+=("ILO_USER")
+    [[ -z "$ILO_PASS" ]] && missing_vars+=("ILO_PASS")
+    [[ -z "$FAN_COUNT" ]] && missing_vars+=("FAN_COUNT")
+    [[ -z "$GLOBAL_MIN_SPEED" ]] && missing_vars+=("GLOBAL_MIN_SPEED")
+    [[ -z "$ENABLE_DYNAMIC_CONTROL" ]] && missing_vars+=("ENABLE_DYNAMIC_CONTROL")
+    [[ -z "$LOG_LEVEL" ]] && missing_vars+=("LOG_LEVEL")
+    [[ -z "$MONITORING_INTERVAL" ]] && missing_vars+=("MONITORING_INTERVAL")
+    if [[ ${#missing_vars[@]} -gt 0 ]]; then
+        print_color "$RED" "✗ The following required config fields are missing: ${missing_vars[*]}"
+        print_color "$YELLOW" "Please update your configuration file and try again."
+        exit 1
+    fi
+
     print_color "$GREEN" "Update completed successfully!"
 }
 
@@ -745,33 +761,26 @@ main() {
     detect_os
     check_prerequisites
     check_privileges
-
-    # Debugging: Print the value of $1
-    print_color "$BLUE" "Debug: Argument passed to script: ${1:-}" # Use ${1:-} to avoid unbound variable error
-
-    # Handle cases where $1 is not set
+    print_color "$BLUE" "Debug: Argument passed to script: ${1:-}"
     if [[ -z "${1:-}" ]]; then
         print_color "$RED" "No argument provided. Use 'install' or 'update'."
         exit 1
     fi
-
     case "${1:-}" in
         install)
-            run_full_installation "${1:-}" # Pass ${1:-} explicitly
+            run_full_installation
             ;;
         update)
-            run_update "${1:-}" # Pass ${1:-} explicitly
+            run_update
             ;;
         *)
             print_color "$RED" "Invalid argument. Use 'install' or 'update'."
             exit 1
             ;;
     esac
-
-    show_completion_message "${1:-}" # Pass ${1:-} explicitly
+    show_completion_message
+    exit 0
 }
-
-main "${@:-}" # Use "${@:-}" to avoid unbound variable error
 
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)

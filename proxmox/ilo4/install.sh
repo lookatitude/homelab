@@ -755,6 +755,9 @@ main() {
     check_prerequisites
     check_privileges
 
+    # Debugging: Print the value of $1
+    print_color "$BLUE" "Debug: Argument passed to script: $1"
+
     # Handle cases where $1 is not set
     if [[ -z "$1" ]]; then
         print_color "$RED" "No argument provided. Use 'install' or 'update'."
@@ -763,10 +766,10 @@ main() {
 
     case "$1" in
         install)
-            run_full_installation
+            run_full_installation "$1"
             ;;
         update)
-            run_update
+            run_update "$1"
             ;;
         *)
             print_color "$RED" "Invalid argument. Use 'install' or 'update'."
@@ -774,7 +777,7 @@ main() {
             ;;
     esac
 
-    show_completion_message
+    show_completion_message "$1"
 }
 
 main "$@"

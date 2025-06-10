@@ -810,6 +810,6 @@ trap 'print_color "$RED" "An unexpected error occurred at line $LINENO during st
 set -o errtrace
 
 # Only call main if this script is being run directly (not sourced)
-if [[ "${BASH_SOURCE[0]:-}" == "$0" || -z "${BASH_SOURCE[0]:-}" ]]; then
+if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then
     main "$@"
 fi

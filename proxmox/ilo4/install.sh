@@ -652,6 +652,35 @@ install_dependencies() {
     echo ""
 }
 
+# Function to update scripts from the latest Git repository
+update_scripts() {
+    log_message "INFO" "Updating iLO4 fan control scripts from the latest Git repository..."
+
+    # Pull the latest changes from the Git repository
+    if git pull origin main; then
+        log_message "INFO" "Successfully pulled the latest changes from the Git repository."
+    else
+        log_message "ERROR" "Failed to pull the latest changes from the Git repository."
+        exit 1
+    fi
+
+    # Replace the existing scripts and service files
+    cp ilo4-fan-control.sh /usr/local/bin/ilo4-fan-control.sh
+    cp ilo4-fan-control.service /etc/systemd/system/ilo4-fan-control.service
+
+    # Restart the service
+    systemctl daemon-reload
+    systemctl restart ilo4-fan-control.service
+
+    log_message "INFO" "iLO4 fan control scripts updated and service restarted successfully."
+}
+
+# Check for update flag
+if [[ "$1" == "update" ]]; then
+    update_scripts
+    exit 0
+fi
+
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)
 exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)

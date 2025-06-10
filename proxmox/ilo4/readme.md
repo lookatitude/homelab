@@ -549,3 +549,43 @@ If running remotely (not on the server itself):
 ## Support
 
 For issues, questions, or contributions, please use the GitHub repository where this script is hosted.
+
+# iLO4 Fan Control
+
+## Installation
+To install the iLO4 fan control system, run the following command:
+
+```bash
+sudo ./install.sh
+```
+Alternatively, you can use the following one-liner to install directly from the GitHub repository:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
+```
+
+## Update
+To update the iLO4 fan control system to the latest version, use the `update` flag:
+
+```bash
+sudo ./install.sh update
+```
+Alternatively, you can use the following one-liner to update directly from the GitHub repository:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" update
+```
+
+## Configuration
+Refer to the `ilo4-fan-control.conf` file for configuration options. Ensure the file is correctly set up before running the script.
+
+## Logs
+Logs are stored in `/var/log/ilo4-fan-control.log`. Check this file for detailed information about the script's execution.
+
+## Troubleshooting
+If you encounter issues, verify the following:
+- Network connectivity to the iLO host.
+- Correct credentials in the configuration file.
+- Proper permissions for the log directory.
+
+For further assistance, consult the detailed logs or contact support.

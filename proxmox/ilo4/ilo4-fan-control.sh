@@ -346,7 +346,7 @@ handle_ssh_timeout() {
     log_message "INFO" "SSH connection reinitialized successfully."
 }
 
-# Updated function to execute a single command on iLO with response validation
+# Enhanced `execute_ilo_command` function with timeout and forced exit
 execute_ilo_command() {
     local cmd="$1"
     local retry=0
@@ -356,7 +356,7 @@ execute_ilo_command() {
 
         # Use timeout to prevent hanging
         if output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1); then
-            log_message "DEBUG" "Command executed: $cmd"
+            log_message "DEBUG" "Command executed successfully: $cmd"
             
             # Validate response
             if [[ -n "$output" ]]; then
@@ -367,7 +367,7 @@ execute_ilo_command() {
                 log_message "WARN" "Empty response received. Retrying..."
             fi
         else
-            log_message "WARN" "Command failed (attempt $((retry + 1))/$COMMAND_RETRIES): $cmd"
+            log_message "ERROR" "Command failed (attempt $((retry + 1))/$COMMAND_RETRIES): $cmd"
             log_message "DEBUG" "Error output: $output"
 
             # Check for session timeout error
@@ -384,7 +384,7 @@ execute_ilo_command() {
     done
 
     log_message "ERROR" "Command failed after $COMMAND_RETRIES attempts: $cmd"
-    return 1
+    exit 1
 }
 
 # Function to wait for network connectivity
@@ -426,48 +426,72 @@ get_pid_info() {
     fi
 }
 
-# Function to initialize fan control system
+# Function to handle repeated failures and force exit
+handle_repeated_failures() {
+    local failure_count="$1"
+    local max_failures="$2"
+    local failure_reason="$3"
+
+    if [[ "$failure_count" -ge "$max_failures" ]]; then
+        log_message "ERROR" "Maximum failure count ($max_failures) reached: $failure_reason"
+        log_message "ERROR" "Exiting script to prevent indefinite hanging."
+        exit 1
+    fi
+}
+
+# Updated function to initialize fan control system
 initialize_fan_control() {
     log_message "INFO" "Initializing fan control system..."
-    
+
     # Wait for network connectivity
     log_message "DEBUG" "Checking network connectivity..."
     if ! wait_for_network; then
         log_message "ERROR" "Network connectivity check failed. Ensure the iLO host is reachable at $ILO_HOST."
         exit 1
     fi
-    
+
     # Test SSH connection
     log_message "DEBUG" "Testing SSH connection to iLO..."
-    if ! test_ssh_connection; then
-        log_message "ERROR" "SSH connection test failed. Verify credentials and network settings."
-        exit 1
-    fi
-    
+    local ssh_failures=0
+    local max_ssh_failures=3
+    while ! test_ssh_connection; do
+        ((ssh_failures++))
+        handle_repeated_failures "$ssh_failures" "$max_ssh_failures" "SSH connection test failed. Verify credentials and network settings."
+        sleep 5
+    done
+
     # Get PID information
     local pids_raw
     pids_raw=$(get_pid_info)
-    
+
     # Set minimum fan speeds
     log_message "INFO" "Setting minimum fan speeds to $GLOBAL_MIN_SPEED..."
+    local fan_failures=0
+    local max_fan_failures=3
     for ((i=0; i < FAN_COUNT; i++)); do
-        if execute_ilo_command "fan p $i min $GLOBAL_MIN_SPEED"; then
-            log_message "DEBUG" "Fan $i minimum speed set to $GLOBAL_MIN_SPEED"
-        else
+        if ! execute_ilo_command "fan p $i min $GLOBAL_MIN_SPEED"; then
             log_message "WARN" "Failed to set minimum speed for fan $i"
+            ((fan_failures++))
+            handle_repeated_failures "$fan_failures" "$max_fan_failures" "Failed to set minimum speed for fans."
+        else
+            log_message "DEBUG" "Fan $i minimum speed set to $GLOBAL_MIN_SPEED"
         fi
         sleep 1  # Small delay between commands
     done
-    
+
     # Set PID minimums
     if [[ -n "$pids_raw" ]]; then
         log_message "INFO" "Setting PID minimums to $PID_MIN_LOW..."
+        local pid_failures=0
+        local max_pid_failures=3
         while IFS= read -r pid; do
             if [[ -n "$pid" ]]; then
-                if execute_ilo_command "fan pid $pid lo $PID_MIN_LOW"; then
-                    log_message "DEBUG" "PID $pid minimum set to $PID_MIN_LOW"
-                else
+                if ! execute_ilo_command "fan pid $pid lo $PID_MIN_LOW"; then
                     log_message "WARN" "Failed to set minimum for PID $pid"
+                    ((pid_failures++))
+                    handle_repeated_failures "$pid_failures" "$max_pid_failures" "Failed to set PID minimums."
+                else
+                    log_message "DEBUG" "PID $pid minimum set to $PID_MIN_LOW"
                 fi
                 sleep 1
             fi
@@ -475,23 +499,27 @@ initialize_fan_control() {
     else
         log_message "WARN" "No PIDs found, skipping PID configuration"
     fi
-    
+
     # Disable specified sensors
     if [[ ${#DISABLED_SENSORS[@]} -gt 0 ]]; then
         log_message "INFO" "Disabling sensors: ${DISABLED_SENSORS[*]}"
+        local sensor_failures=0
+        local max_sensor_failures=3
         for sensor in "${DISABLED_SENSORS[@]}"; do
             log_message "DEBUG" "Executing command to disable sensor $sensor: fan t $sensor off"
             if output=$(execute_ilo_command "fan t $sensor off"); then
                 log_message "DEBUG" "Sensor $sensor disabled successfully. Command output: $output"
             else
                 log_message "WARN" "Failed to disable sensor $sensor. Command output: $output"
+                ((sensor_failures++))
+                handle_repeated_failures "$sensor_failures" "$max_sensor_failures" "Failed to disable sensors."
             fi
             sleep 1
         done
     else
         log_message "INFO" "No sensors to disable. Skipping sensor configuration."
     fi
-    
+
     log_message "INFO" "Fan control system initialization completed successfully"
 }
 

@@ -480,13 +480,16 @@ initialize_fan_control() {
     if [[ ${#DISABLED_SENSORS[@]} -gt 0 ]]; then
         log_message "INFO" "Disabling sensors: ${DISABLED_SENSORS[*]}"
         for sensor in "${DISABLED_SENSORS[@]}"; do
-            if execute_ilo_command "fan t $sensor off"; then
-                log_message "DEBUG" "Sensor $sensor disabled"
+            log_message "DEBUG" "Executing command to disable sensor $sensor: fan t $sensor off"
+            if output=$(execute_ilo_command "fan t $sensor off"); then
+                log_message "DEBUG" "Sensor $sensor disabled successfully. Command output: $output"
             else
-                log_message "WARN" "Failed to disable sensor $sensor"
+                log_message "WARN" "Failed to disable sensor $sensor. Command output: $output"
             fi
             sleep 1
         done
+    else
+        log_message "INFO" "No sensors to disable. Skipping sensor configuration."
     fi
     
     log_message "INFO" "Fan control system initialization completed successfully"

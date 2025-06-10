@@ -263,23 +263,23 @@ fi
 log_message "DEBUG" "SSH command configured: ${SSH_EXEC[*]}"
 
 # Function to test SSH connection
+# Always use a non-interactive command ("exit" or "version") to avoid hanging
+# Returns 0 on success, 1 on failure
 test_ssh_connection() {
     log_message "INFO" "Testing SSH connection to iLO..."
-    
     local test_attempts=3
     local attempt=1
-    
     while [[ $attempt -le $test_attempts ]]; do
         log_message "DEBUG" "Connection test attempt $attempt/$test_attempts"
-        
-        # Add error handling and detailed logging for SSH command execution
-        log_message "DEBUG" "Executing SSH command: ${SSH_EXEC[*]}"
-        if ! output=$("${SSH_EXEC[@]}" 2>&1); then
+        log_message "DEBUG" "Executing SSH command: ${SSH_EXEC[*]} exit"
+        if ! output=$("${SSH_EXEC[@]}" exit 2>&1); then
             log_message "ERROR" "SSH command failed with error: $output"
-            exit 1
+            ((attempt++))
+            sleep 2
+            continue
         fi
         log_message "INFO" "SSH command executed successfully"
-        
+        # Also test with a harmless command (e.g., 'version')
         if timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "version" &>/dev/null; then
             log_message "INFO" "SSH connection successful"
             return 0
@@ -291,7 +291,6 @@ test_ssh_connection() {
             fi
         fi
     done
-    
     log_message "ERROR" "SSH connection failed after $test_attempts attempts"
     return 1
 }

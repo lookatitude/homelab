@@ -652,6 +652,16 @@ install_dependencies() {
     echo ""
 }
 
+# Redirect output to the log file
+exec > >(tee -a /var/log/ilo4-fan-control.log)
+exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)
+
+# Ensure log file exists and is writable
+if [[ ! -f /var/log/ilo4-fan-control.log ]]; then
+    touch /var/log/ilo4-fan-control.log
+    chmod 644 /var/log/ilo4-fan-control.log
+fi
+
 # Ensure cleanup of temporary files after downloading templates
 if [[ -f "/tmp/ilo4-fan-control.conf.template" ]]; then
     rm -f "/tmp/ilo4-fan-control.conf.template"

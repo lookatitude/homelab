@@ -159,10 +159,14 @@ setup_logging() {
     # Create log directory if it doesn't exist
     local log_dir="$(dirname \"$LOG_FILE\")"
     if [[ ! -d "$log_dir" ]]; then
-        mkdir -p "$log_dir" || {
-            echo "ERROR: Cannot create log directory: $log_dir"
-            exit 1
-        }
+        if [[ ! -w "$(dirname $log_dir)" ]]; then
+            log_message "WARN" "Cannot create log directory: $log_dir. Skipping log setup due to read-only file system."
+        else
+            mkdir -p "$log_dir" || {
+                log_message "ERROR" "Cannot create log directory: $log_dir"
+                exit 1
+            }
+        fi
     fi
 
     # Set up log rotation if logrotate is available
@@ -292,28 +296,93 @@ test_ssh_connection() {
     return 1
 }
 
-# Function to execute a single command on iLO with retry
-execute_ilo_command() {
+# Function to handle CLI session timeouts and retry SSH connection
+detect_and_retry_ssh_timeout() {
     local cmd="$1"
-    local retry=0
-    
-    while [[ $retry -lt $COMMAND_RETRIES ]]; do
-        log_message "DEBUG" "Executing iLO command: $cmd"
-        
-        # Use timeout to prevent hanging
-        if timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1; then
-            log_message "DEBUG" "Command successful: $cmd"
+    local max_retries=5
+    local retry_interval=5
+    local attempt=1
+
+    while [[ $attempt -le $max_retries ]]; do
+        log_message "DEBUG" "Attempting SSH command (attempt $attempt/$max_retries): $cmd"
+
+        if output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1); then
+            log_message "INFO" "SSH command executed successfully: $cmd"
+            echo "$output"
             return 0
         else
-            ((retry++))
-            log_message "WARN" "Command failed (attempt $retry/$COMMAND_RETRIES): $cmd"
-            if [[ $retry -lt $COMMAND_RETRIES ]]; then
-                log_message "DEBUG" "Retrying in 3 seconds..."
-                sleep 3
+            if [[ "$output" =~ "CLI session timed out" ]]; then
+                log_message "WARN" "CLI session timed out. Retrying in $retry_interval seconds..."
+                sleep "$retry_interval"
+                ((attempt++))
+            else
+                log_message "ERROR" "SSH command failed with error: $output"
+                return 1
             fi
         fi
     done
-    
+
+    log_message "ERROR" "SSH command failed after $max_retries attempts: $cmd"
+    return 1
+}
+
+# Update the execute_ilo_command function to use the new retry mechanism
+execute_ilo_command() {
+    local cmd="$1"
+    log_message "DEBUG" "Executing iLO command with retry mechanism: $cmd"
+    detect_and_retry_ssh_timeout "$cmd"
+}
+
+# Function to detect and retry SSH session timeout
+handle_ssh_timeout() {
+    log_message "WARN" "Detected SSH session timeout. Attempting to reconnect..."
+
+    # Reinitialize SSH connection
+    if ! test_ssh_connection; then
+        log_message "ERROR" "Failed to reinitialize SSH connection after timeout. Exiting."
+        exit 1
+    fi
+
+    log_message "INFO" "SSH connection reinitialized successfully."
+}
+
+# Updated function to execute a single command on iLO with response validation
+execute_ilo_command() {
+    local cmd="$1"
+    local retry=0
+
+    while [[ $retry -lt $COMMAND_RETRIES ]]; do
+        log_message "DEBUG" "Executing iLO command: $cmd"
+
+        # Use timeout to prevent hanging
+        if output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1); then
+            log_message "DEBUG" "Command executed: $cmd"
+            
+            # Validate response
+            if [[ -n "$output" ]]; then
+                log_message "INFO" "Received valid response: $output"
+                echo "$output"
+                return 0
+            else
+                log_message "WARN" "Empty response received. Retrying..."
+            fi
+        else
+            log_message "WARN" "Command failed (attempt $((retry + 1))/$COMMAND_RETRIES): $cmd"
+            log_message "DEBUG" "Error output: $output"
+
+            # Check for session timeout error
+            if [[ "$output" =~ "CLI session timed out" ]]; then
+                handle_ssh_timeout
+            fi
+        fi
+
+        ((retry++))
+        if [[ $retry -lt $COMMAND_RETRIES ]]; then
+            log_message "DEBUG" "Retrying in 3 seconds..."
+            sleep 3
+        fi
+    done
+
     log_message "ERROR" "Command failed after $COMMAND_RETRIES attempts: $cmd"
     return 1
 }

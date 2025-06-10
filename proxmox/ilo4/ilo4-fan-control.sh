@@ -266,6 +266,14 @@ test_ssh_connection() {
     while [[ $attempt -le $test_attempts ]]; do
         log_message "DEBUG" "Connection test attempt $attempt/$test_attempts"
         
+        # Add error handling and detailed logging for SSH command execution
+        log_message "DEBUG" "Executing SSH command: ${SSH_EXEC[*]}"
+        if ! output=$("${SSH_EXEC[@]}" 2>&1); then
+            log_message "ERROR" "SSH command failed with error: $output"
+            exit 1
+        fi
+        log_message "INFO" "SSH command executed successfully"
+        
         if timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "version" &>/dev/null; then
             log_message "INFO" "SSH connection successful"
             return 0
@@ -352,14 +360,16 @@ initialize_fan_control() {
     log_message "INFO" "Initializing fan control system..."
     
     # Wait for network connectivity
+    log_message "DEBUG" "Checking network connectivity..."
     if ! wait_for_network; then
-        log_message "ERROR" "Network connectivity check failed"
+        log_message "ERROR" "Network connectivity check failed. Ensure the iLO host is reachable at $ILO_HOST."
         exit 1
     fi
     
     # Test SSH connection
+    log_message "DEBUG" "Testing SSH connection to iLO..."
     if ! test_ssh_connection; then
-        log_message "ERROR" "SSH connection test failed"
+        log_message "ERROR" "SSH connection test failed. Verify credentials and network settings."
         exit 1
     fi
     

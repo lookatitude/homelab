@@ -490,10 +490,10 @@ configure_service() {
     print_color "$BLUE" "Step 6: Configuring systemd service..."
     
     # Reload systemd
-    sudo systemctl daemon-reload
+    $SUDO_CMD systemctl daemon-reload
     
     # Enable the service
-    sudo systemctl enable ilo4-fan-control.service
+    $SUDO_CMD systemctl enable ilo4-fan-control.service
     
     print_color "$GREEN" "✓ Service configured and enabled"
     echo ""
@@ -674,11 +674,7 @@ update_scripts() {
 
     # Download and replace main script
     if curl -fsSL "$SCRIPT_URL" -o "/tmp/ilo4-fan-control.sh"; then
-        if [[ $EUID -eq 0 ]]; then
-            mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
-        else
-            sudo mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
-        fi
+        mv -f "/tmp/ilo4-fan-control.sh" "$INSTALL_DIR/ilo4-fan-control.sh"
         chmod +x "$INSTALL_DIR/ilo4-fan-control.sh"
         log_message "INFO" "Main script updated successfully"
     else
@@ -688,11 +684,7 @@ update_scripts() {
 
     # Download and replace service file
     if curl -fsSL "$SERVICE_URL" -o "/tmp/ilo4-fan-control.service"; then
-        if [[ $EUID -eq 0 ]]; then
-            mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
-        else
-            sudo mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
-        fi
+        mv -f "/tmp/ilo4-fan-control.service" "$SERVICE_DIR/ilo4-fan-control.service"
         log_message "INFO" "Service file updated successfully"
     else
         log_message "ERROR" "Failed to update service file"
@@ -700,7 +692,7 @@ update_scripts() {
     fi
 
     # Restart the service
-    sudo systemctl restart ilo4-fan-control.service
+    $SUDO_CMD systemctl restart ilo4-fan-control.service
     log_message "INFO" "Service restarted successfully"
 }
 
@@ -780,7 +772,7 @@ main() {
     show_completion_message "${1:-}" # Pass ${1:-} explicitly
 }
 
-main "$@"
+main "${@:-}" # Use "${@:-}" to avoid unbound variable error
 
 # Redirect output to the log file
 exec > >(tee -a /var/log/ilo4-fan-control.log)
@@ -865,11 +857,11 @@ while true; do
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_color "$YELLOW" "Starting iLO4 fan control service..."
-        if sudo systemctl start ilo4-fan-control.service; then
+        if ${SUDO_CMD} systemctl start ilo4-fan-control.service; then
             print_color "$GREEN" "✓ Service started successfully"
             sleep 2
             print_color "$BLUE" "Service status:"
-            sudo systemctl status ilo4-fan-control.service --no-pager -l
+            ${SUDO_CMD} systemctl status ilo4-fan-control.service --no-pager -l
         else
             print_color "$YELLOW" "⚠ Service failed to start, check logs for details"
             print_color "$YELLOW" "You can start it manually later with: ${SUDO_CMD} systemctl start ilo4-fan-control"

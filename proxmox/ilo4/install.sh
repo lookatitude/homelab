@@ -675,9 +675,22 @@ update_scripts() {
     log_message "INFO" "iLO4 fan control scripts updated and service restarted successfully."
 }
 
+# Ensure $1 is set to avoid unbound variable error
+if [[ -z "${1:-}" ]]; then
+    set -- "install"
+fi
+
 # Check for update flag
 if [[ "$1" == "update" ]]; then
     update_scripts
+    exit 0
+fi
+
+# Default to full installation process if no parameter is passed
+if [[ "$1" == "install" ]]; then
+    log_message "INFO" "Starting full installation process..."
+    # Call the full installation logic here
+    # ...existing installation logic...
     exit 0
 fi
 

@@ -781,36 +781,68 @@ pre_main_setup() {
     fi
 }
 
-# Main function: setup, parse arguments, run install/update, show header
+# Print header and mode, then run the correct flow for install or update
 main() {
     show_header
-    detect_os
-    check_prerequisites
-    check_privileges
-    # Support for argument passing with a leading -- (as in bash -c ... -- --install)
+    # Parse argument for mode
     local arg1="${1:-}"
     local arg2="${2:-}"
     if [[ "$arg1" == "--" ]]; then
         arg1="$arg2"
         shift
     fi
-    print_color "$BLUE" "Debug: Argument passed to script: $arg1"
     if [[ -z "$arg1" ]]; then
         print_color "$RED" "No argument provided. Use 'install' or 'update'."
         exit 1
     fi
-    # Only now, after header and argument checks, redirect output to log
-    pre_main_setup
     case "$arg1" in
         install|--install)
-            run_full_installation
+            print_color "$CYAN" "Mode: INSTALL"
             ;;
         update|--update)
-            run_update
+            print_color "$CYAN" "Mode: UPDATE"
             ;;
         *)
             print_color "$RED" "Invalid argument. Use 'install' or 'update'."
             exit 1
+            ;;
+    esac
+    # Check and install dependencies if needed
+    check_prerequisites
+    install_dependencies
+    check_privileges
+    detect_os
+    # Only now, after header and argument checks, redirect output to log
+    pre_main_setup
+    # Main flow for install or update
+    case "$arg1" in
+        install|--install)
+            print_color "$BLUE" "Step 1: Downloading and installing files..."
+            download_and_install_files
+            print_color "$BLUE" "Step 2: Loading template values and collecting configuration..."
+            set_default_values
+            configure_settings
+            print_color "$BLUE" "Step 3: Creating configuration file..."
+            create_configuration_file
+            print_color "$BLUE" "Step 4: Setting up systemd service..."
+            configure_service
+            print_color "$BLUE" "Step 5: Testing configuration..."
+            test_configuration
+            print_color "$GREEN" "Install complete."
+            ;;
+        update|--update)
+            print_color "$BLUE" "Step 1: Downloading and updating files..."
+            download_and_install_files
+            print_color "$BLUE" "Step 2: Loading existing configuration..."
+            if ! load_existing_config; then
+                print_color "$RED" "No existing configuration found. Cannot update."
+                exit 1
+            fi
+            print_color "$BLUE" "Step 3: Updating systemd service with loaded config..."
+            configure_service
+            print_color "$BLUE" "Step 4: Testing configuration..."
+            test_configuration
+            print_color "$GREEN" "Update complete."
             ;;
     esac
     show_completion_message

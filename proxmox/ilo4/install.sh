@@ -359,7 +359,7 @@ create_configuration_file() {
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
 
     # Create configuration file with user settings
-    cat << EOF | sudo tee "$config_file" > /dev/null
+    cat << EOF | ${SUDO_CMD:-} tee "$config_file" > /dev/null
 # iLO4 Fan Control Configuration File
 # This file contains the configuration for the iLO4 fan control system
 # Edit this file to customize your setup, then restart the service
@@ -453,7 +453,7 @@ test_configuration() {
         
         # Test script execution
         print_color "$YELLOW" "Running configuration test..."
-        if sudo timeout 60 "$INSTALL_DIR/ilo4-fan-control.sh" --test-mode &>/dev/null; then
+        if ${SUDO_CMD:-} timeout 60 "$INSTALL_DIR/ilo4-fan-control.sh" --test-mode &>/dev/null; then
             print_color "$GREEN" "✓ Script configuration test completed successfully"
         else
             print_color "$YELLOW" "⚠ Script test had issues, but installation completed"
@@ -610,12 +610,12 @@ install_dependencies() {
         print_color "$YELLOW" "Installing missing packages: ${packages_to_install[*]}"
         
         if command -v apt-get &> /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y "${packages_to_install[@]}"
+            ${SUDO_CMD:-} apt-get update
+            ${SUDO_CMD:-} apt-get install -y "${packages_to_install[@]}"
         elif command -v yum &> /dev/null; then
-            sudo yum install -y "${packages_to_install[@]}"
+            ${SUDO_CMD:-} yum install -y "${packages_to_install[@]}"
         elif command -v dnf &> /dev/null; then
-            sudo dnf install -y "${packages_to_install[@]}"
+            ${SUDO_CMD:-} dnf install -y "${packages_to_install[@]}"
         else
             print_color "$RED" "✗ Cannot install packages automatically on this system"
             print_color "$YELLOW" "Please install these packages manually: ${packages_to_install[*]}"
@@ -785,21 +785,23 @@ pre_main_setup() {
 main() {
     show_header
     # Parse argument for mode
-    local arg1="${1:-}"
+    local arg1="${1:-install}"
     local arg2="${2:-}"
+    # Accept --install or --update as first or second argument, or default to install
     if [[ "$arg1" == "--" ]]; then
         arg1="$arg2"
         shift
     fi
+    # Normalize argument (strip leading dashes)
+    arg1="${arg1#--}"
     if [[ -z "$arg1" ]]; then
-        print_color "$RED" "No argument provided. Use 'install' or 'update'."
-        exit 1
+        arg1="install"
     fi
     case "$arg1" in
-        install|--install)
+        install)
             print_color "$CYAN" "Mode: INSTALL"
             ;;
-        update|--update)
+        update)
             print_color "$CYAN" "Mode: UPDATE"
             ;;
         *)
@@ -816,7 +818,7 @@ main() {
     pre_main_setup
     # Main flow for install or update
     case "$arg1" in
-        install|--install)
+        install)
             print_color "$BLUE" "Step 1: Downloading and installing files..."
             download_and_install_files
             print_color "$BLUE" "Step 2: Loading template values and collecting configuration..."
@@ -830,7 +832,7 @@ main() {
             test_configuration
             print_color "$GREEN" "Install complete."
             ;;
-        update|--update)
+        update)
             print_color "$BLUE" "Step 1: Downloading and updating files..."
             download_and_install_files
             print_color "$BLUE" "Step 2: Loading existing configuration..."

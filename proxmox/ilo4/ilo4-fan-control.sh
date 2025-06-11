@@ -321,14 +321,33 @@ detect_and_retry_ssh_timeout() {
 execute_ilo_command() {
     local cmd="$1"
     local retry=0
+    local empty_output_retries=2  # Number of extra retries for empty output
     while [[ $retry -lt $COMMAND_RETRIES ]]; do
         log_message "DEBUG" "Executing iLO command: $cmd"
-        output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1)
-        # Accept iLO4's normal output as success
-        if [[ "$output" == *"status=0"* || "$output" == *"status_tag=COMMAND COMPLETED"* ]]; then
-            log_message "INFO" "Received valid response: $output"
-            echo "$output"
-            return 0
+        # Use timeout to prevent hanging
+        if output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1); then
+            log_message "DEBUG" "Command executed successfully: $cmd"
+            # Validate response
+            if [[ -n "$output" ]]; then
+                log_message "INFO" "Received valid response: $output"
+                echo "$output"
+                return 0
+            else
+                log_message "WARN" "iLO4 returned empty output for command: '$cmd'. This is a known iLO4 quirk (especially after reboot). Will retry $empty_output_retries more times."
+                local empty_retry=1
+                while [[ $empty_retry -le $empty_output_retries ]]; do
+                    sleep 2
+                    log_message "INFO" "Retrying command due to empty output (attempt $empty_retry/$empty_output_retries)..."
+                    output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1)
+                    if [[ -n "$output" ]]; then
+                        log_message "INFO" "Received valid response after retry: $output"
+                        echo "$output"
+                        return 0
+                    fi
+                    ((empty_retry++))
+                done
+                log_message "ERROR" "iLO4 returned empty output for command: '$cmd' after $empty_output_retries retries. Giving up on this command."
+            fi
         else
             log_message "ERROR" "Command failed (attempt $((retry + 1))/$COMMAND_RETRIES): $cmd"
             log_message "DEBUG" "Error output: $output"
@@ -378,7 +397,20 @@ execute_ilo_command() {
                 echo "$output"
                 return 0
             else
-                log_message "WARN" "Empty response received. Retrying..."
+                log_message "WARN" "iLO4 returned empty output for command: '$cmd'. This is a known iLO4 quirk (especially after reboot). Will retry $empty_output_retries more times."
+                local empty_retry=1
+                while [[ $empty_retry -le $empty_output_retries ]]; do
+                    sleep 2
+                    log_message "INFO" "Retrying command due to empty output (attempt $empty_retry/$empty_output_retries)..."
+                    output=$(timeout "$CONNECTION_TIMEOUT" "${SSH_EXEC[@]}" "$cmd" 2>&1)
+                    if [[ -n "$output" ]]; then
+                        log_message "INFO" "Received valid response after retry: $output"
+                        echo "$output"
+                        return 0
+                    fi
+                    ((empty_retry++))
+                done
+                log_message "ERROR" "iLO4 returned empty output for command: '$cmd' after $empty_output_retries retries. Giving up on this command."
             fi
         else
             log_message "ERROR" "Command failed (attempt $((retry + 1))/$COMMAND_RETRIES): $cmd"
@@ -614,6 +646,7 @@ set_cpu_fan_speeds() {
     local total_fans=${#fans[@]}
     
     for fan in "${fans[@]}"; do
+        log_message "INFO" "Setting Fan $fan to speed $speed (CPU$cpu_num, temp: $temp°C)"
         if execute_ilo_command "fan p $fan max $speed"; then
             log_message "DEBUG" "Fan $fan set to speed $speed"
             ((success_count++))

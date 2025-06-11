@@ -755,113 +755,33 @@ run_update() {
     print_color "$GREEN" "Update completed successfully!"
 }
 
-# Redirect output to the log file
-exec > >(tee -a /var/log/ilo4-fan-control.log)
-exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)
+# Function to perform all pre-main setup (log redirection, log file creation, template cleanup, etc.)
+pre_main_setup() {
+    # Redirect output to the log file
+    exec > >(tee -a /var/log/ilo4-fan-control.log)
+    exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)
 
-# Ensure log file exists and is writable
-if [[ ! -f /var/log/ilo4-fan-control.log ]]; then
-    touch /var/log/ilo4-fan-control.log
-    chmod 644 /var/log/ilo4-fan-control.log
-fi
-
-# Ensure cleanup of temporary files after downloading templates
-if [[ -f "/tmp/ilo4-fan-control.conf.template" ]]; then
-    rm -f "/tmp/ilo4-fan-control.conf.template"
-fi
-
-# Add detailed feedback for each step
-print_color "$BLUE" "Debug: Verifying template cleanup"
-if [[ ! -f "/tmp/ilo4-fan-control.conf.template" ]]; then
-    print_color "$GREEN" "✓ Temporary template file cleaned up successfully"
-else
-    print_color "$RED" "✗ Failed to clean up temporary template file"
-fi
-
-# Ensure error handling during remote execution
-trap 'print_color "$RED" "An unexpected error occurred at line $LINENO during step $STEP. Exiting..."' ERR
-set -o errtrace
-
-# Define all functions above this point
-
-main() {
-    pre_main_setup
-    show_header
-    detect_os
-    check_prerequisites
-    check_privileges
-    # Support for argument passing with a leading -- (as in bash -c ... -- --install)
-    local arg1="${1:-}"
-    local arg2="${2:-}"
-    if [[ "$arg1" == "--" ]]; then
-        arg1="$arg2"
-        shift
+    # Ensure log file exists and is writable
+    if [[ ! -f /var/log/ilo4-fan-control.log ]]; then
+        touch /var/log/ilo4-fan-control.log
+        chmod 644 /var/log/ilo4-fan-control.log
     fi
-    print_color "$BLUE" "Debug: Argument passed to script: $arg1"
-    if [[ -z "$arg1" ]]; then
-        print_color "$RED" "No argument provided. Use 'install' or 'update'."
-        exit 1
+
+    # Ensure cleanup of temporary files after downloading templates
+    if [[ -f "/tmp/ilo4-fan-control.conf.template" ]]; then
+        rm -f "/tmp/ilo4-fan-control.conf.template"
     fi
-    case "$arg1" in
-        install|--install)
-            run_full_installation
-            ;;
-        update|--update)
-            run_update
-            ;;
-        *)
-            print_color "$RED" "Invalid argument. Use 'install' or 'update'."
-            exit 1
-            ;;
-    esac
-    show_completion_message
-    exit 0
+
+    # Add detailed feedback for each step
+    print_color "$BLUE" "Debug: Verifying template cleanup"
+    if [[ ! -f "/tmp/ilo4-fan-control.conf.template" ]]; then
+        print_color "$GREEN" "✓ Temporary template file cleaned up successfully"
+    else
+        print_color "$RED" "✗ Failed to clean up temporary template file"
+    fi
 }
 
 # Only call main if this script is being run directly (not sourced)
 if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then
     main "$@"
 fi
-
-# Ensure all required dependencies are installed
-install_dependencies() {
-    local deps=(ssh timeout ping grep awk sort tr head sleep)
-    if [[ "$ENABLE_DYNAMIC_CONTROL" == "true" ]]; then
-        deps+=(sensors)
-    fi
-    local missing=()
-    for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &>/dev/null; then
-            missing+=("$dep")
-        fi
-    done
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        print_color "$YELLOW" "Installing missing dependencies: ${missing[*]}"
-        if command -v apt-get &>/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y "${missing[@]}"
-        elif command -v yum &>/dev/null; then
-            sudo yum install -y "${missing[@]}"
-        else
-            print_color "$RED" "No supported package manager found. Please install: ${missing[*]} manually."
-            exit 1
-        fi
-    else
-        print_color "$GREEN" "All required dependencies are already installed."
-    fi
-}
-
-# Stop all running instances of the service before update/install
-restart_service_clean() {
-    local svc_name="ilo4-fan-control"
-    if systemctl list-units --type=service | grep -q "$svc_name"; then
-        print_color "$YELLOW" "Stopping all running instances of $svc_name.service..."
-        sudo systemctl stop "$svc_name.service"
-        sleep 2
-        print_color "$YELLOW" "Ensuring no lingering processes..."
-        sudo pkill -f ilo4-fan-control.sh || true
-    fi
-    print_color "$YELLOW" "Starting $svc_name.service..."
-    sudo systemctl start "$svc_name.service"
-    sudo systemctl enable "$svc_name.service"
-}

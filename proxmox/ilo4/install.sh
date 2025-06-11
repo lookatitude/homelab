@@ -782,7 +782,8 @@ fi
 trap 'print_color "$RED" "An unexpected error occurred at line $LINENO during step $STEP. Exiting..."' ERR
 set -o errtrace
 
-# Only call main if this script is being run directly (not sourced)
+# Define all functions above this point
+
 main() {
     pre_main_setup
     show_header
@@ -816,35 +817,6 @@ main() {
     show_completion_message
     exit 0
 }
-
-pre_main_setup() {
-    # Redirect output to the log file
-    exec > >(tee -a /var/log/ilo4-fan-control.log)
-    exec 2> >(tee -a /var/log/ilo4-fan-control.log >&2)
-
-    # Ensure log file exists and is writable
-    if [[ ! -f /var/log/ilo4-fan-control.log ]]; then
-        touch /var/log/ilo4-fan-control.log
-        chmod 644 /var/log/ilo4-fan-control.log
-    fi
-
-    # Ensure cleanup of temporary files after downloading templates
-    if [[ -f "/tmp/ilo4-fan-control.conf.template" ]]; then
-        rm -f "/tmp/ilo4-fan-control.conf.template"
-    fi
-
-    # Add detailed feedback for each step
-    print_color "$BLUE" "Debug: Verifying template cleanup"
-    if [[ ! -f "/tmp/ilo4-fan-control.conf.template" ]]; then
-        print_color "$GREEN" "✓ Temporary template file cleaned up successfully"
-    else
-        print_color "$RED" "✗ Failed to clean up temporary template file"
-    fi
-}
-
-# Ensure error handling during remote execution
-trap 'print_color "$RED" "An unexpected error occurred at line $LINENO during step $STEP. Exiting..."' ERR
-set -o errtrace
 
 # Only call main if this script is being run directly (not sourced)
 if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then

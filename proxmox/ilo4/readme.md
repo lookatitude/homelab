@@ -17,13 +17,15 @@ A comprehensive, configurable fan control solution for HP servers with iLO4 that
 
 ### One-Line Auto-Install
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" --install
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --install
 ```
 
 ### One-Line Update
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" --update
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --update
 ```
+
+> **Note:** The `--` is required to ensure arguments are passed to the script, not to bash itself.
 
 ### What the installer does:
 1. **Detects existing configuration** and loads current settings as defaults (if re-running)
@@ -580,7 +582,7 @@ sudo ./install.sh
 Alternatively, you can use the following one-liner to install directly from the GitHub repository:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --install
 ```
 
 ## Update
@@ -592,7 +594,7 @@ sudo ./install.sh update
 Alternatively, you can use the following one-liner to update directly from the GitHub repository:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" update
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --update
 ```
 
 ## Configuration
@@ -614,7 +616,7 @@ For further assistance, consult the detailed logs or contact support.
 To install the iLO4 fan control system interactively:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh | bash -s install
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --install
 ```
 
 This will guide you through configuration and install all required files and services.
@@ -624,7 +626,7 @@ This will guide you through configuration and install all required files and ser
 To update the iLO4 fan control system non-interactively (using your existing config):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh | bash -s update
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --update
 ```
 
 - The update command will **not prompt for any input** and will use values from `/etc/ilo4-fan-control/ilo4-fan-control.conf`.

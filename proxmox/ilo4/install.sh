@@ -761,12 +761,19 @@ main() {
     detect_os
     check_prerequisites
     check_privileges
-    print_color "$BLUE" "Debug: Argument passed to script: ${1:-}"
-    if [[ -z "${1:-}" ]]; then
+    # Support for argument passing with a leading -- (as in bash -c ... -- --install)
+    local arg1="${1:-}"
+    local arg2="${2:-}"
+    if [[ "$arg1" == "--" ]]; then
+        arg1="$arg2"
+        shift
+    fi
+    print_color "$BLUE" "Debug: Argument passed to script: $arg1"
+    if [[ -z "$arg1" ]]; then
         print_color "$RED" "No argument provided. Use 'install' or 'update'."
         exit 1
     fi
-    case "${1:-}" in
+    case "$arg1" in
         install|--install)
             run_full_installation
             ;;

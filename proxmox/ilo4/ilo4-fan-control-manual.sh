@@ -225,6 +225,17 @@ show_fan_info_a() {
     execute_ilo_command "fan info a"
 }
 
+# Function to show fan info g (fan info g)
+show_fan_info_g() {
+    print_color "$YELLOW" "Getting fan info G from iLO (fan info g)..."
+    if ! test_connection; then
+        print_color "$RED" "Cannot connect to iLO. Check configuration."
+        return 1
+    fi
+    print_color "$BLUE" "fan info g output:"
+    execute_ilo_command "fan info g"
+}
+
 # Function to set specific fan speed
 set_fan_speed() {
     local fan=$1
@@ -323,9 +334,10 @@ interactive_mode() {
         echo "5. Emergency cooling (max speed)"
         echo "6. Test iLO connection"
         echo "7. Show all fan info (fan info a)"
+        echo "8. Show fan info G (fan info g)"
         echo "0. Exit"
         echo
-        read -p "Select option [0-7]: " choice
+        read -p "Select option [0-8]: " choice
         
         case $choice in
             1)
@@ -357,6 +369,9 @@ interactive_mode() {
                 ;;
             7)
                 show_fan_info_a
+                ;;
+            8)
+                show_fan_info_g
                 ;;
             0)
                 print_color "$GREEN" "Goodbye!"
@@ -412,6 +427,9 @@ main() {
             ;;
         --fan-info-a)
             show_fan_info_a
+            ;;
+        --fan-info-g)
+            show_fan_info_g
             ;;
         --help|-h|"")
             show_usage

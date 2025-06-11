@@ -529,6 +529,12 @@ initialize_fan_control() {
             fi
             sleep 1
         done
+        # After disabling sensors, log fan info g output for diagnostics
+        if output=$(execute_ilo_command "fan info g"); then
+            log_message "INFO" "fan info g output after sensor disable:\n$output"
+        else
+            log_message "WARN" "Failed to get fan info g after sensor disable. Command output: $output"
+        fi
     else
         log_message "INFO" "No sensors to disable. Skipping sensor configuration."
     fi

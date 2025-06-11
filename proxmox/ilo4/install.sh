@@ -795,9 +795,10 @@ main() {
         arg1="$arg2"
         shift
     fi
-    # Normalize argument (strip leading dashes)
-    arg1="${arg1#--}"
-    if [[ -z "$arg1" ]]; then
+    # Accept --install or --update with or without dashes
+    if [[ "$arg1" =~ ^--?(install|update)$ ]]; then
+        arg1="${arg1#--}"
+    elif [[ -z "$arg1" ]]; then
         arg1="install"
     fi
     case "$arg1" in
@@ -817,9 +818,7 @@ main() {
     install_dependencies
     check_privileges
     detect_os
-    # Only now, after header and argument checks, redirect output to log
     pre_main_setup
-    # Main flow for install or update
     case "$arg1" in
         install)
             print_color "$BLUE" "Step 1: Downloading and installing files..."
@@ -836,7 +835,6 @@ main() {
             print_color "$GREEN" "Install complete."
             ;;
         update)
-            # Ensure dependencies are checked/installed on update as well
             install_dependencies
             print_color "$BLUE" "Step 1: Downloading and updating files..."
             download_and_install_files

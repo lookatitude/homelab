@@ -284,6 +284,17 @@ emergency_cooling() {
     print_color "$GREEN" "✓ All fans set to maximum speed"
 }
 
+# Function to load configuration from file if present
+load_config() {
+    local config_file="/etc/ilo4-fan-control/ilo4-fan-control.conf"
+    local local_config_file="./ilo4-fan-control.conf"
+    if [[ -f "$config_file" ]]; then
+        source "$config_file"
+    elif [[ -f "$local_config_file" ]]; then
+        source "$local_config_file"
+    fi
+}
+
 # Interactive mode function
 interactive_mode() {
     while true; do
@@ -347,6 +358,7 @@ interactive_mode() {
 
 # Main script logic
 main() {
+    load_config
     # Check if running as root/sudo
     if [[ $EUID -ne 0 ]]; then
         print_color "$YELLOW" "This script should be run as root or with sudo for best results."

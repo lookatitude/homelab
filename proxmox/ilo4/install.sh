@@ -783,7 +783,6 @@ pre_main_setup() {
 
 # Main function: setup, parse arguments, run install/update, show header
 main() {
-    pre_main_setup
     show_header
     detect_os
     check_prerequisites
@@ -800,6 +799,8 @@ main() {
         print_color "$RED" "No argument provided. Use 'install' or 'update'."
         exit 1
     fi
+    # Only now, after header and argument checks, redirect output to log
+    pre_main_setup
     case "$arg1" in
         install|--install)
             run_full_installation

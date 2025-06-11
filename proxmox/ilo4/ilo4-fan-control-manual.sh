@@ -15,6 +15,9 @@ USE_SSH_PASS=true             # Set to false to use SSH key auth
 FAN_COUNT=6                   # Number of fans (fan 0 to FAN_COUNT-1)
 GLOBAL_MIN_SPEED=60          # Minimum fan speed
 PID_MIN_LOW=1600             # Minimum low for all PIDs
+CONNECTION_TIMEOUT=15         # SSH connection timeout
+SSH_ALIVE_INTERVAL=10         # SSH server alive interval
+SSH_ALIVE_COUNT_MAX=3         # SSH server alive count max
 # ========================
 
 # Color codes for output
@@ -102,20 +105,34 @@ For automatic temperature-based control, use the main fan control service:
 EOF
 }
 
+# Function to load configuration
+load_config() {
+    local config_file="/etc/ilo4-fan-control/ilo4-fan-control.conf"
+    if [[ -f "$config_file" ]]; then
+        source "$config_file"
+        echo -e "\033[0;32m[INFO] Loaded configuration from $config_file\033[0m"
+    else
+        echo -e "\033[0;33m[WARN] Config file $config_file not found. Using built-in defaults.\033[0m"
+    fi
+}
+
+# Load config before anything else
+load_config
+
 # Build SSH command options (safe legacy ciphers for iLO4)
 SSH_OPTS=(
     -o StrictHostKeyChecking=no
     -o UserKnownHostsFile=/dev/null
     -o LogLevel=ERROR
-    -o ConnectTimeout=15
-    -o ServerAliveInterval=10
-    -o ServerAliveCountMax=3
+    -o ConnectTimeout="$CONNECTION_TIMEOUT"
+    -o ServerAliveInterval="$SSH_ALIVE_INTERVAL"
+    -o ServerAliveCountMax="$SSH_ALIVE_COUNT_MAX"
     -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
     -o HostKeyAlgorithms=+ssh-rsa,ssh-dss
     -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss
 )
 
-# Build the SSH command
+# Build the SSH command using config values
 if [ "$USE_SSH_PASS" = true ]; then
     if ! command -v sshpass &>/dev/null; then
         print_color "$RED" "ERROR: sshpass is not installed!"
@@ -284,17 +301,6 @@ emergency_cooling() {
     print_color "$GREEN" "✓ All fans set to maximum speed"
 }
 
-# Function to load configuration from file if present
-load_config() {
-    local config_file="/etc/ilo4-fan-control/ilo4-fan-control.conf"
-    local local_config_file="./ilo4-fan-control.conf"
-    if [[ -f "$config_file" ]]; then
-        source "$config_file"
-    elif [[ -f "$local_config_file" ]]; then
-        source "$local_config_file"
-    fi
-}
-
 # Interactive mode function
 interactive_mode() {
     while true; do
@@ -358,7 +364,6 @@ interactive_mode() {
 
 # Main script logic
 main() {
-    load_config
     # Check if running as root/sudo
     if [[ $EUID -ne 0 ]]; then
         print_color "$YELLOW" "This script should be run as root or with sudo for best results."

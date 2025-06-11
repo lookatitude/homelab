@@ -781,6 +781,41 @@ pre_main_setup() {
     fi
 }
 
+# Main function: setup, parse arguments, run install/update, show header
+main() {
+    pre_main_setup
+    show_header
+    detect_os
+    check_prerequisites
+    check_privileges
+    # Support for argument passing with a leading -- (as in bash -c ... -- --install)
+    local arg1="${1:-}"
+    local arg2="${2:-}"
+    if [[ "$arg1" == "--" ]]; then
+        arg1="$arg2"
+        shift
+    fi
+    print_color "$BLUE" "Debug: Argument passed to script: $arg1"
+    if [[ -z "$arg1" ]]; then
+        print_color "$RED" "No argument provided. Use 'install' or 'update'."
+        exit 1
+    fi
+    case "$arg1" in
+        install|--install)
+            run_full_installation
+            ;;
+        update|--update)
+            run_update
+            ;;
+        *)
+            print_color "$RED" "Invalid argument. Use 'install' or 'update'."
+            exit 1
+            ;;
+    esac
+    show_completion_message
+    exit 0
+}
+
 # Only call main if this script is being run directly (not sourced)
 if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then
     main "$@"

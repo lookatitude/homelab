@@ -86,24 +86,10 @@ check_prerequisites() {
     done
     
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
-        print_color "$RED" "✗ Missing required commands: ${missing_commands[*]}"
-        print_color "$YELLOW" "Please install these packages first and re-run the installer."
-        
-        # Suggest installation commands based on OS
-        if command -v apt-get &> /dev/null; then
-            print_color "$YELLOW" "Run: apt-get update && apt-get install -y ${missing_commands[*]}"
-        elif command -v yum &> /dev/null; then
-            print_color "$YELLOW" "Run: yum install -y ${missing_commands[*]}"
-        fi
-        exit 1
+        print_color "$YELLOW" "Warning: The following commands are missing and will be installed if possible: ${missing_commands[*]}"
+    else
+        print_color "$GREEN" "✓ Prerequisites check passed"
     fi
-    
-    # Check if systemd is running
-    if ! systemctl is-system-running &>/dev/null; then
-        print_color "$YELLOW" "⚠ Warning: systemd may not be running properly"
-    fi
-    
-    print_color "$GREEN" "✓ Prerequisites check passed"
     echo ""
 }
 
@@ -813,10 +799,10 @@ main() {
             exit 1
             ;;
     esac
-    # Check and install dependencies if needed
-    check_prerequisites
-    install_dependencies
+    # Fix: check privileges and install dependencies BEFORE checking prerequisites
     check_privileges
+    install_dependencies
+    check_prerequisites
     detect_os
     pre_main_setup
     case "$arg1" in
@@ -835,7 +821,6 @@ main() {
             print_color "$GREEN" "Install complete."
             ;;
         update)
-            install_dependencies
             print_color "$BLUE" "Step 1: Downloading and updating files..."
             download_and_install_files
             print_color "$BLUE" "Step 2: Loading existing configuration..."

@@ -817,7 +817,5 @@ main() {
     exit 0
 }
 
-# Only call main if this script is being run directly (not sourced)
-if [[ "$0" == "bash" || "$0" == "-bash" || "$0" == *install.sh ]]; then
-    main "$@"
-fi
+# Always call main with all arguments, unconditionally
+main "$@"

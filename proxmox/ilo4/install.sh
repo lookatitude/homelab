@@ -358,6 +358,9 @@ create_configuration_file() {
 
     local config_file="$CONFIG_DIR/ilo4-fan-control.conf"
 
+    # Ensure the configuration directory exists before writing
+    ${SUDO_CMD:-} mkdir -p "$CONFIG_DIR"
+
     # Create configuration file with user settings
     cat << EOF | ${SUDO_CMD:-} tee "$config_file" > /dev/null
 # iLO4 Fan Control Configuration File

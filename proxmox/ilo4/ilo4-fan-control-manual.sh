@@ -148,19 +148,29 @@ fi
 execute_ilo_command() {
     local cmd="$1"
     local silent="${2:-false}"
-    
+    local output
+
     if [[ "$silent" != "true" ]]; then
         print_color "$BLUE" "Executing: $cmd"
     fi
-    
-    if timeout 30 "${SSH_EXEC[@]}" "$cmd" 2>&1; then
+
+    output=$(timeout 30 "${SSH_EXEC[@]}" "$cmd" 2>&1)
+    local status=$?
+    if [[ $status -eq 0 ]]; then
         if [[ "$silent" != "true" ]]; then
             print_color "$GREEN" "✓ Success"
+            # Print output if not empty and not just the command echoed back
+            if [[ -n "$output" && "$output" != "$cmd" ]]; then
+                echo "$output"
+            fi
         fi
         return 0
     else
         if [[ "$silent" != "true" ]]; then
             print_color "$RED" "✗ Failed: $cmd"
+            if [[ -n "$output" ]]; then
+                echo "$output"
+            fi
         fi
         return 1
     fi

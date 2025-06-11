@@ -77,7 +77,7 @@ check_prerequisites() {
     print_color "$BLUE" "Checking prerequisites..."
     
     local missing_commands=()
-    local required_commands=("wget" "curl" "systemctl" "ssh")
+    local required_commands=("wget" "curl" "systemctl" "ssh" "sshpass")
     
     for cmd in "${required_commands[@]}"; do
         if ! command -v "$cmd" &> /dev/null; then
@@ -401,7 +401,7 @@ ENABLE_DYNAMIC_CONTROL=$ENABLE_DYNAMIC_CONTROL
 MONITORING_INTERVAL=$MONITORING_INTERVAL
 
 # Fans controlled by CPU1 temperature
-CPU1_FANS=(3 4 5)
+CPU1_FANS
 
 # Fans controlled by CPU2 temperature
 CPU2_FANS=(0 1 2)
@@ -600,7 +600,7 @@ install_dependencies() {
     print_color "$BLUE" "Checking and installing dependencies..."
     
     local packages_to_install=()
-    local required_packages=("wget" "curl")
+    local required_packages=("wget" "curl" "sshpass" "lm-sensors")
     
     # Check which packages are missing
     for package in "${required_packages[@]}"; do
@@ -836,6 +836,8 @@ main() {
             print_color "$GREEN" "Install complete."
             ;;
         update)
+            # Ensure dependencies are checked/installed on update as well
+            install_dependencies
             print_color "$BLUE" "Step 1: Downloading and updating files..."
             download_and_install_files
             print_color "$BLUE" "Step 2: Loading existing configuration..."

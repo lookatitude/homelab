@@ -767,10 +767,10 @@ main() {
         exit 1
     fi
     case "${1:-}" in
-        install)
+        install|--install)
             run_full_installation
             ;;
-        update)
+        update|--update)
             run_update
             ;;
         *)

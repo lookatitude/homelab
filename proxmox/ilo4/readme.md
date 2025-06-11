@@ -1,4 +1,4 @@
-# iLO4 Fan Control System for HP Servers
+# HP iLO4 Fan Control System for ProLiant Servers
 
 A comprehensive, configurable fan control solution for HP servers with iLO4 that provides both automatic temperature-based control and manual management capabilities.
 
@@ -17,7 +17,12 @@ A comprehensive, configurable fan control solution for HP servers with iLO4 that
 
 ### One-Line Auto-Install
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" --install
+```
+
+### One-Line Update
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" --update
 ```
 
 ### What the installer does:
@@ -29,12 +34,26 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main
 6. Sets up systemd service with automatic startup
 7. Tests the configuration and connection
 
+### After installation
+- The `ilo4-fan-control` service will be started automatically.
+- To check status: `sudo systemctl status ilo4-fan-control`
+- To manually control fans: `sudo ilo4-fan-control-manual.sh --interactive`
+- To update: use the update one-liner above.
+
 ### Re-running the installer
 When you run the installer on an existing installation, it will:
 - **Load your current configuration** as defaults for all prompts
 - Allow you to modify any settings while keeping others unchanged
 - Preserve your existing configuration and only update what you change
 - Test the new configuration before applying changes
+
+## 🔄 Quick Update
+
+To update to the latest version, run:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/lookatitude/homelab/main/proxmox/ilo4/install.sh)" -- --update
+```
 
 ## 📋 System Requirements
 
